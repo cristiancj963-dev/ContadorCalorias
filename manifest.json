@@ -1,0 +1,18 @@
+{
+  "name": "Contador de Calorías & Macros",
+  "short_name": "CaloríasApp",
+  "description": "Seguimiento diario de calorías y macros para recomposición corporal con Google Workspace",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

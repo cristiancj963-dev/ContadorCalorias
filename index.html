@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CaloríasApp">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Contador de Calorías & Macros</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ENCABEZADO PRINCIPAL -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-group">
+        <span class="logo-icon">🥑</span>
+        <div class="logo-text">
+          <h1 class="app-title">CaloríasApp</h1>
+          <span class="app-subtitle">Recomposición corporal</span>
+        </div>
+      </div>
+
+      <!-- Barra de navegación por fechas -->
+      <div class="date-navigator">
+        <button id="prevDayBtn" class="btn-icon" title="Día anterior">◀</button>
+        <div class="date-title-box">
+          <span id="currentDateDisplay" class="current-date-text">Hoy</span>
+          <input type="date" id="datePickerInput" class="date-picker-hidden">
+        </div>
+        <button id="nextDayBtn" class="btn-icon" title="Día siguiente">▶</button>
+        <button id="todayBtn" class="btn btn-xs btn-outline">Hoy</button>
+      </div>
+
+      <!-- Estado y controles superiores -->
+      <div class="header-status-controls">
+        <span id="streakBadge" class="badge badge-streak">🔥 0 días de racha</span>
+        <span id="syncStatusBadge" class="badge badge-neutral" title="Estado de sincronización">📁 Solo Local</span>
+        <button id="themeToggleBtn" class="btn btn-sm btn-outline">🌙 Modo Oscuro</button>
+      </div>
+    </div>
+
+    <!-- PESTAÑAS DE NAVEGACIÓN -->
+    <nav class="app-nav">
+      <div class="nav-container">
+        <button class="nav-btn active" data-tab="dashboard">
+          <span class="nav-icon">📊</span> Diario
+        </button>
+        <button class="nav-btn" data-tab="history">
+          <span class="nav-icon">📜</span> Historial & Medias
+        </button>
+        <button class="nav-btn" data-tab="foods">
+          <span class="nav-icon">🥗</span> Catálogo Alimentos
+        </button>
+        <button class="nav-btn" data-tab="combos">
+          <span class="nav-icon">⚡</span> Combos / Favoritos
+        </button>
+        <button class="nav-btn" data-tab="settings">
+          <span class="nav-icon">⚙️</span> Ajustes & Drive
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="main-content">
+
+    <!-- ======================================================== -->
+    <!-- PESTAÑA 1: DASHBOARD / DIARIO -->
+    <!-- ======================================================== -->
+    <section id="dashboardTab" class="tab-content active">
+
+      <!-- ENTRADA RÁPIDA NATURAL -->
+      <div class="card quick-input-card">
+        <div class="quick-input-header">
+          <div class="input-title-group">
+            <span class="section-icon">✍️</span>
+            <div>
+              <h3>Registro Rápido en Lenguaje Natural</h3>
+              <p class="section-subtitle">Escribe lo que has comido tal cual; el parser calculará las calorías y macros automáticamente.</p>
+            </div>
+          </div>
+          <div class="quick-actions-bar">
+            <button id="openDirectEntryBtn" class="btn btn-sm btn-outline">
+              ⚡ Calorías Directas
+            </button>
+            <button id="openWeightModalBtn" class="btn btn-sm btn-outline">
+              ⚖️ Registrar Peso
+            </button>
+          </div>
+        </div>
+
+        <div class="quick-input-body">
+          <div class="input-controls-row">
+            <div class="meal-select-group">
+              <label for="mealTypeSelect">Toma:</label>
+              <select id="mealTypeSelect" class="form-select">
+                <option value="desayuno">☕ Desayuno</option>
+                <option value="almuerzo">🥪 Almuerzo (Media mañana)</option>
+                <option value="comida">🍽️ Comida</option>
+                <option value="merienda">🍌 Merienda</option>
+                <option value="cena">🌙 Cena / Última toma</option>
+              </select>
+            </div>
+            <div class="input-hints">
+              <span>Ej: <em>vaso leche desnatada nesquik, 3 puñados avena, 3 tostadas cottage miel</em></span>
+            </div>
+          </div>
+
+          <div class="textarea-wrapper">
+            <textarea 
+              id="quickInputText" 
+              class="form-textarea" 
+              rows="2" 
+              placeholder="Escribe tus alimentos separados por comas o líneas (ej: 200g patata cocida, filete ternera, rodaja sandia)..."></textarea>
+          </div>
+
+          <div class="input-buttons-row">
+            <button id="parseBtn" class="btn btn-secondary">
+              🔍 Previsualizar Desglose
+            </button>
+            <button id="clearInputBtn" class="btn btn-text">
+              Limpiar
+            </button>
+          </div>
+        </div>
+
+        <!-- PREVISUALIZACIÓN INTERACTIVA DE CHIPS -->
+        <div id="parsedPreviewContainer" class="parsed-preview-box" style="display: none;">
+          <div class="preview-header">
+            <h4>Alimentos Detectados</h4>
+            <div id="previewTotals" class="preview-totals-text"></div>
+          </div>
+          <div id="parsedItemsList" class="parsed-chips-grid"></div>
+          <div class="preview-footer">
+            <button id="saveParsedMealBtn" class="btn btn-primary btn-lg">
+              ✓ Registrar en esta toma
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL DE RESUMEN DIARIO DE METAS Y MACROS -->
+      <div class="dashboard-metrics-grid">
+        
+        <!-- Tarjeta de Calorías -->
+        <div class="metric-card cal-metric-card">
+          <div class="metric-card-top">
+            <div>
+              <span class="metric-label">Calorías Totales</span>
+              <div class="metric-big-number" id="calConsumedText">0 kcal</div>
+            </div>
+            <span id="calDiffBadge" class="badge badge-neutral">0 kcal</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="calProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+          </div>
+          <div class="metric-footer" id="calTargetText">Meta: 2.750 kcal (2.750-2.800)</div>
+        </div>
+
+        <!-- Tarjeta de Proteína -->
+        <div class="metric-card">
+          <div class="metric-card-top">
+            <div>
+              <span class="metric-label">Proteína (Músculo)</span>
+              <div class="metric-val-number" id="proteinValueText">0 g</div>
+            </div>
+            <span id="proteinStatusBadge" class="badge badge-neutral">En objetivo</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="proteinProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+          </div>
+          <div class="metric-footer" id="proteinTargetText">Meta: 155g (150-160g)</div>
+        </div>
+
+        <!-- Tarjeta de Carbohidratos -->
+        <div class="metric-card">
+          <div class="metric-card-top">
+            <div>
+              <span class="metric-label">Carbohidratos (Energía)</span>
+              <div class="metric-val-number" id="carbsValueText">0 g</div>
+            </div>
+            <span id="carbsStatusBadge" class="badge badge-neutral">En objetivo</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="carbsProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+          </div>
+          <div class="metric-footer" id="carbsTargetText">Meta: 350g (340-360g)</div>
+        </div>
+
+        <!-- Tarjeta de Grasas -->
+        <div class="metric-card">
+          <div class="metric-card-top">
+            <div>
+              <span class="metric-label">Grasas (Hormonal)</span>
+              <div class="metric-val-number" id="fatsValueText">0 g</div>
+            </div>
+            <span id="fatsStatusBadge" class="badge badge-neutral">En objetivo</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="fatsProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+          </div>
+          <div class="metric-footer" id="fatsTargetText">Meta: 78g (75-80g)</div>
+        </div>
+
+      </div>
+
+      <!-- SECCIONES DE TOMAS DEL DÍA (Desayuno, Almuerzo, Comida, Merienda, Cena) -->
+      <div class="meal-sections-header">
+        <h2>Registro del Día</h2>
+      </div>
+      <div id="mealSectionsContainer" class="meal-sections-grid">
+        <!-- Renderizado dinámicamente por app.js -->
+      </div>
+
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- PESTAÑA 2: HISTORIAL Y MEDIAS -->
+    <!-- ======================================================== -->
+    <section id="historyTab" class="tab-content">
+      <div class="section-top-bar">
+        <div>
+          <h2>Historial y Tendencias</h2>
+          <p class="section-subtitle">Promedios de consumo calórico, balance de macronutrientes y peso corporal.</p>
+        </div>
+      </div>
+
+      <!-- Resumen de medias -->
+      <div class="card">
+        <h3>Promedios Recientes</h3>
+        <div id="historyAveragesContainer" class="averages-grid"></div>
+      </div>
+
+      <div class="history-layout-grid">
+        <!-- Tabla de días registrados -->
+        <div class="card history-table-card">
+          <h3>Días Anteriores</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Calorías</th>
+                  <th>Proteína</th>
+                  <th>Carbos</th>
+                  <th>Grasas</th>
+                  <th>Diferencia Meta</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Historial de peso -->
+        <div class="card weight-card">
+          <div class="card-header-flex">
+            <h3>Registro de Peso</h3>
+            <button id="openWeightModalBtn2" class="btn btn-xs btn-primary" onclick="document.getElementById('openWeightModalBtn').click()">+ Añadir Peso</button>
+          </div>
+          <div id="weightListContainer" class="weight-timeline"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- PESTAÑA 3: CATÁLOGO DE ALIMENTOS -->
+    <!-- ======================================================== -->
+    <section id="foodsTab" class="tab-content">
+      <div class="section-top-bar">
+        <div>
+          <h2>Catálogo Nutricional</h2>
+          <p class="section-subtitle">Base de datos de tus alimentos reales con sus valores por porción y sinónimos para el parser.</p>
+        </div>
+        <button id="openAddFoodBtn" class="btn btn-primary">+ Nuevo Alimento</button>
+      </div>
+
+      <div class="card filter-bar-card">
+        <div class="filter-controls">
+          <input type="text" id="foodSearchInput" class="form-input" placeholder="🔍 Buscar alimento o alias (ej. pavo, avena, bacalao)...">
+          <select id="foodCategoryFilter" class="form-select"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Alimento</th>
+                <th>Categoría</th>
+                <th>Porción Estándar</th>
+                <th>Calorías</th>
+                <th>Proteína</th>
+                <th>Carbos</th>
+                <th>Grasas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="foodTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- PESTAÑA 4: COMBOS / PLANTILLAS -->
+    <!-- ======================================================== -->
+    <section id="combosTab" class="tab-content">
+      <div class="section-top-bar">
+        <div>
+          <h2>Combos y Plantillas Rápidas</h2>
+          <p class="section-subtitle">Guarda combinaciones frecuentes de comidas para registrarlas enteras con un solo clic.</p>
+        </div>
+      </div>
+
+      <div id="combosListContainer" class="combos-grid"></div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- PESTAÑA 5: AJUSTES Y GOOGLE WORKSPACE -->
+    <!-- ======================================================== -->
+    <section id="settingsTab" class="tab-content">
+      <div class="section-top-bar">
+        <div>
+          <h2>Ajustes & Sincronización</h2>
+          <p class="section-subtitle">Configura tus metas de recomposición corporal y conecta tu Google Drive.</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        
+        <!-- Formulario de Metas y Macros -->
+        <div class="card">
+          <h3>🎯 Metas Calóricas y Macronutrientes</h3>
+          <form id="settingsForm" class="settings-form">
+            
+            <div class="form-group-box">
+              <h4>Calorías Diarias</h4>
+              <div class="form-row-3">
+                <div class="form-field">
+                  <label for="targetCaloriesInput">Objetivo Central (kcal):</label>
+                  <input type="number" id="targetCaloriesInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="minCaloriesInput">Mínimo (kcal):</label>
+                  <input type="number" id="minCaloriesInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="maxCaloriesInput">Máximo (kcal):</label>
+                  <input type="number" id="maxCaloriesInput" class="form-input" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group-box">
+              <h4>Proteínas</h4>
+              <div class="form-row-3">
+                <div class="form-field">
+                  <label for="targetProteinInput">Objetivo (g):</label>
+                  <input type="number" id="targetProteinInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="minProteinInput">Mínimo (g):</label>
+                  <input type="number" id="minProteinInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="maxProteinInput">Máximo (g):</label>
+                  <input type="number" id="maxProteinInput" class="form-input" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group-box">
+              <h4>Carbohidratos</h4>
+              <div class="form-row-3">
+                <div class="form-field">
+                  <label for="targetCarbsInput">Objetivo (g):</label>
+                  <input type="number" id="targetCarbsInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="minCarbsInput">Mínimo (g):</label>
+                  <input type="number" id="minCarbsInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="maxCarbsInput">Máximo (g):</label>
+                  <input type="number" id="maxCarbsInput" class="form-input" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group-box">
+              <h4>Grasas</h4>
+              <div class="form-row-3">
+                <div class="form-field">
+                  <label for="targetFatsInput">Objetivo (g):</label>
+                  <input type="number" id="targetFatsInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="minFatsInput">Mínimo (g):</label>
+                  <input type="number" id="minFatsInput" class="form-input" required>
+                </div>
+                <div class="form-field">
+                  <label for="maxFatsInput">Máximo (g):</label>
+                  <input type="number" id="maxFatsInput" class="form-input" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="currentWeightInput">Peso corporal actual (kg):</label>
+              <input type="number" step="0.1" id="currentWeightInput" class="form-input">
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Guardar Nuevas Metas</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Conexión con Google Workspace / Drive -->
+        <div class="card">
+          <h3>☁️ Google Workspace & Google Sheets</h3>
+          <p class="text-muted">Conecta tu propia hoja de cálculo en Google Drive para tener respaldo automático y consultar tus datos en la nube.</p>
+          
+          <div class="drive-setup-steps">
+            <ol>
+              <li>Abre <strong>Google Drive</strong> y crea una hoja de cálculo llamada <code>ContadorCalorias_DB</code>.</li>
+              <li>Ve a <strong>Extensiones &gt; Apps Script</strong> y pega el código del archivo <code>google_apps_script.js</code>.</li>
+              <li>Haz clic en <strong>Implementar &gt; Nueva implementación</strong> como Aplicación Web (acceso: Cualquiera).</li>
+              <li>Pega la URL web resultante a continuación:</li>
+            </ol>
+          </div>
+
+          <div class="form-field">
+            <label for="googleScriptUrlInput">URL de la Web App de Google Apps Script:</label>
+            <input type="url" id="googleScriptUrlInput" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+
+          <div class="sync-actions-buttons">
+            <button id="syncNowBtn" class="btn btn-secondary">
+              ⬆️ Sincronizar ahora con Google Sheets
+            </button>
+            <button id="pullNowBtn" class="btn btn-outline">
+              ⬇️ Descargar desde Google Sheets
+            </button>
+          </div>
+
+          <div id="syncStatusMsg" class="sync-status-container"></div>
+
+          <hr class="divider">
+
+          <h3>💾 Copias de Seguridad Locales</h3>
+          <p class="text-muted">Exporta o restaura todos tus registros, alimentos y configuraciones en formato JSON.</p>
+          <div class="backup-actions">
+            <button id="exportBackupBtn" class="btn btn-outline">📥 Exportar Copia JSON</button>
+            <button id="importBackupBtn" class="btn btn-outline">📤 Restaurar Copia JSON</button>
+            <input type="file" id="backupFileInput" accept=".json" style="display: none;">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- MODALES DE DIÁLOGO -->
+  <!-- ======================================================== -->
+
+  <!-- Modal 1: Añadir / Editar Alimento -->
+  <div id="foodModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="foodModalTitle">Nuevo Alimento</h3>
+        <button id="closeFoodModalBtn" class="btn-icon">✕</button>
+      </div>
+      <form id="foodForm" class="modal-form">
+        <input type="hidden" id="foodIdInput">
+        
+        <div class="form-field">
+          <label for="foodNameInput">Nombre del Alimento:</label>
+          <input type="text" id="foodNameInput" class="form-input" required placeholder="Ej: Pechuga de pollo a la plancha">
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="foodCategoryInput">Categoría:</label>
+            <select id="foodCategoryInput" class="form-select"></select>
+          </div>
+          <div class="form-field">
+            <label for="foodDefaultUnitInput">Unidad de porción:</label>
+            <input type="text" id="foodDefaultUnitInput" class="form-input" placeholder="Ej: vaso, puñado, loncha, 100g" required>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="foodUnitGramsInput">Gramos aprox. por porción (opcional):</label>
+          <input type="number" step="0.5" id="foodUnitGramsInput" class="form-input" placeholder="Ej: 30 (para puñado), 250 (para vaso)">
+        </div>
+
+        <div class="form-row-4">
+          <div class="form-field">
+            <label for="foodCaloriesInput">Calorías:</label>
+            <input type="number" step="0.1" id="foodCaloriesInput" class="form-input" required placeholder="kcal">
+          </div>
+          <div class="form-field">
+            <label for="foodProteinInput">Proteína (g):</label>
+            <input type="number" step="0.1" id="foodProteinInput" class="form-input" required placeholder="g">
+          </div>
+          <div class="form-field">
+            <label for="foodCarbsInput">Carbos (g):</label>
+            <input type="number" step="0.1" id="foodCarbsInput" class="form-input" required placeholder="g">
+          </div>
+          <div class="form-field">
+            <label for="foodFatsInput">Grasas (g):</label>
+            <input type="number" step="0.1" id="foodFatsInput" class="form-input" required placeholder="g">
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="foodAliasesInput">Sinónimos y palabras clave para el parser (separados por coma):</label>
+          <input type="text" id="foodAliasesInput" class="form-input" placeholder="Ej: pollo plancha, filete pollo, pechuga">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-text" onclick="document.getElementById('closeFoodModalBtn').click()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Alimento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Entrada Directa de Calorías -->
+  <div id="directEntryModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>Entrada Rápida Directa (Comida fuera / Días trampa)</h3>
+        <button id="closeDirectModalBtn" class="btn-icon">✕</button>
+      </div>
+      <form id="directEntryForm" class="modal-form">
+        <div class="form-field">
+          <label for="directDescInput">Descripción:</label>
+          <input type="text" id="directDescInput" class="form-input" placeholder="Ej: Barbacoa social, Sushi fuera, Hamburguesa...">
+        </div>
+        
+        <div class="form-field">
+          <label for="directMealType">Toma del día:</label>
+          <select id="directMealType" class="form-select">
+            <option value="desayuno">☕ Desayuno</option>
+            <option value="almuerzo">🥪 Almuerzo</option>
+            <option value="comida">🍽️ Comida</option>
+            <option value="merienda">🍌 Merienda</option>
+            <option value="cena">🌙 Cena / Última toma</option>
+          </select>
+        </div>
+
+        <div class="form-row-4">
+          <div class="form-field">
+            <label for="directCaloriesInput">Calorías:</label>
+            <input type="number" id="directCaloriesInput" class="form-input" required placeholder="kcal">
+          </div>
+          <div class="form-field">
+            <label for="directProteinInput">Proteína (g):</label>
+            <input type="number" step="0.5" id="directProteinInput" class="form-input" placeholder="g">
+          </div>
+          <div class="form-field">
+            <label for="directCarbsInput">Carbos (g):</label>
+            <input type="number" step="0.5" id="directCarbsInput" class="form-input" placeholder="g">
+          </div>
+          <div class="form-field">
+            <label for="directFatsInput">Grasas (g):</label>
+            <input type="number" step="0.5" id="directFatsInput" class="form-input" placeholder="g">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-text" onclick="document.getElementById('closeDirectModalBtn').click()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Comida</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Registrar Peso -->
+  <div id="weightModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container modal-sm">
+      <div class="modal-header">
+        <h3>Registrar Peso Corporal</h3>
+        <button id="closeWeightModalBtn" class="btn-icon">✕</button>
+      </div>
+      <form id="weightForm" class="modal-form">
+        <div class="form-field">
+          <label for="weightDateInput">Fecha:</label>
+          <input type="date" id="weightDateInput" class="form-input" required>
+        </div>
+        <div class="form-field">
+          <label for="weightValueInput">Peso en báscula (kg):</label>
+          <input type="number" step="0.1" id="weightValueInput" class="form-input" placeholder="Ej: 69.6" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-text" onclick="document.getElementById('closeWeightModalBtn').click()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Peso</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="js/foodsData.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((err) => console.log("SW:", err));
+      });
+    }
+  </script>
+</body>
+</html>
