@@ -720,16 +720,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <button class="btn btn-sm btn-outline quick-add-to-meal-btn" data-meal="${mealKey}">
               + Añadir a ${meta.label.split(" ")[0]}
             </button>
-            ${prevMealItems.length > 0 ? `
-              <button class="btn btn-sm btn-outline copy-yesterday-meal-btn" data-meal="${mealKey}" title="Copiar los ${prevMealItems.length} alimentos de ayer en ${meta.label}">
-                📥 Copiar de ayer (${prevMealItems.length})
-              </button>
-            ` : ""}
-            ${data.items.length > 0 ? `
-              <button class="btn btn-sm btn-outline save-meal-combo-btn" data-meal="${mealKey}" title="Guardar esta toma como plantilla en Combos">
-                ⭐ Guardar Combo
-              </button>
-            ` : ""}
+            <button class="btn btn-sm btn-outline copy-yesterday-meal-btn" data-meal="${mealKey}" title="Copiar los alimentos registrados ayer en ${meta.label}">
+              📥 Copiar de ayer${prevMealItems.length > 0 ? ` (${prevMealItems.length})` : ""}
+            </button>
+            <button class="btn btn-sm btn-outline save-meal-combo-btn" data-meal="${mealKey}" title="Guardar esta toma como plantilla en Combos">
+              ⭐ Guardar Combo
+            </button>
           </div>
           ${data.items.length > 0 ? `
             <button class="btn btn-sm btn-text-danger clear-meal-btn" data-meal="${mealKey}">
@@ -804,7 +800,10 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => {
         let meal = btn.dataset.meal;
         let itemsToCopy = prevDayLogs.filter(l => (l.mealType || "").toLowerCase() === meal);
-        if (itemsToCopy.length === 0) return;
+        if (itemsToCopy.length === 0) {
+          showToast(`ℹ️ No hay registros de ayer (${prevDateStr}) en ${capitalize(meal)}`);
+          return;
+        }
 
         let now = new Date();
         let timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -834,7 +833,10 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => {
         let meal = btn.dataset.meal;
         let currentItems = (mealBreakdown[meal] && mealBreakdown[meal].items) || [];
-        if (currentItems.length === 0) return;
+        if (currentItems.length === 0) {
+          showToast(`ℹ️ Registra primero algún alimento en ${capitalize(meal)} para guardarlo como Combo`);
+          return;
+        }
 
         let name = prompt(`Nombre para este Combo de ${capitalize(meal)}:`, `Mi ${capitalize(meal)} habitual`);
         if (!name || !name.trim()) return;

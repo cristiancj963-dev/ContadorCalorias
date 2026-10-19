@@ -1,4 +1,4 @@
-const CACHE_NAME = "calorias-app-v4";
+const CACHE_NAME = "calorias-app-v5";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -36,9 +36,8 @@ self.addEventListener("activate", (e) => {
   );
 });
 
-// Peticiones: Estrategia Network-First con fallback a caché
+// Peticiones: Estrategia Network-First real con fallback a caché offline
 self.addEventListener("fetch", (e) => {
-  // Ignorar peticiones a Google Apps Script y OpenFoodFacts (siempre van a la red)
   if (
     e.request.url.includes("script.google.com") ||
     e.request.url.includes("googleusercontent.com") ||
@@ -48,19 +47,18 @@ self.addEventListener("fetch", (e) => {
   }
 
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(e.request).then((networkResponse) => {
+    fetch(e.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           let responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(e.request, responseClone));
         }
         return networkResponse;
-      }).catch(() => {
-        return caches.match("./index.html");
-      });
-    })
+      })
+      .catch(() => {
+        return caches.match(e.request).then((cachedResponse) => {
+          return cachedResponse || caches.match("./index.html");
+        });
+      })
   );
 });

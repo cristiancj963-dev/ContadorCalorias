@@ -85,6 +85,87 @@
         </div>
       </div>
 
+      <!-- ENTRADA RÁPIDA NATURAL (CON ESCÁNER OPENFOODFACTS Y FRECUENTES 1-TAP) -->
+      <div class="card quick-input-card">
+        <div class="quick-input-header">
+          <div class="input-title-group">
+            <span class="section-icon">✍️</span>
+            <div>
+              <h3>Registro Rápido en Lenguaje Natural</h3>
+              <p class="section-subtitle">Escribe lo que has comido, toca un frecuente o escanea un código de barras.</p>
+            </div>
+          </div>
+          <div class="quick-actions-bar">
+            <button id="openBarcodeModalBtn" class="btn btn-sm btn-secondary" title="Escanear código de barras o buscar producto en OpenFoodFacts">
+              📷 Código de Barras / Producto
+            </button>
+            <button id="openDirectEntryBtn" class="btn btn-sm btn-outline">
+              ⚡ Calorías Directas
+            </button>
+            <button id="openWeightModalBtn" class="btn btn-sm btn-outline">
+              ⚖️ Registrar Peso
+            </button>
+          </div>
+        </div>
+
+        <div class="quick-input-body">
+          <div class="input-controls-row">
+            <div class="meal-select-group">
+              <label for="mealTypeSelect">Toma:</label>
+              <select id="mealTypeSelect" class="form-select">
+                <option value="desayuno">☕ Desayuno</option>
+                <option value="almuerzo">🥪 Almuerzo (Media mañana)</option>
+                <option value="comida">🍽️ Comida</option>
+                <option value="merienda">🍌 Merienda</option>
+                <option value="cena">🌙 Cena / Última toma</option>
+              </select>
+            </div>
+            <div class="input-hints">
+              <span>Ej: <em>vaso leche desnatada nesquik, 3 puñados avena, 3 tostadas cottage miel</em></span>
+            </div>
+          </div>
+
+          <!-- TIRA DE FRECUENTES / RECIENTES EN ESTA TOMA (1-TAP) -->
+          <div class="frequent-foods-bar">
+            <span class="frequent-label" id="frequentMealLabel">⚡ Frecuentes:</span>
+            <div id="frequentFoodsContainer" class="frequent-chips-scroll">
+              <!-- Renderizado dinámicamente por app.js -->
+            </div>
+          </div>
+
+          <div class="textarea-wrapper">
+            <textarea 
+              id="quickInputText" 
+              class="form-textarea" 
+              rows="2" 
+              placeholder="Escribe tus alimentos separados por comas o líneas (ej: 200g patata cocida, filete ternera, rodaja sandia)..."></textarea>
+          </div>
+
+          <div class="input-buttons-row">
+            <button id="parseBtn" class="btn btn-secondary">
+              🔍 Previsualizar Desglose
+            </button>
+            <button id="clearInputBtn" class="btn btn-text">
+              Limpiar
+            </button>
+          </div>
+        </div>
+
+        <!-- PREVISUALIZACIÓN INTERACTIVA DE CHIPS -->
+        <div id="parsedPreviewContainer" class="parsed-preview-box" style="display: none;">
+          <div class="preview-header">
+            <h4>Alimentos Detectados</h4>
+            <div id="previewTotals" class="preview-totals-text"></div>
+          </div>
+          <div id="parsedItemsList" class="parsed-chips-grid"></div>
+          <div class="preview-footer">
+            <button id="saveParsedMealBtn" class="btn btn-primary btn-lg">
+              ✓ Registrar en esta toma
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- PANEL DE RESUMEN DIARIO ESTILO CAL AI (ANILLOS + HEALTH SCORE) -->
       <div class="calai-dashboard-wrapper">
 
@@ -217,87 +298,6 @@
         </div>
       </div>
 
-      <!-- ENTRADA RÁPIDA NATURAL -->
-      <div class="card quick-input-card">
-        <div class="quick-input-header">
-          <div class="input-title-group">
-            <span class="section-icon">✍️</span>
-            <div>
-              <h3>Registro Rápido en Lenguaje Natural</h3>
-              <p class="section-subtitle">Escribe lo que has comido tal cual; el parser calculará las calorías y macros automáticamente.</p>
-            </div>
-          </div>
-          <div class="quick-actions-bar">
-            <button id="openBarcodeModalBtn" class="btn btn-sm btn-secondary" title="Escanear código de barras o buscar producto en OpenFoodFacts">
-              📷 Código de Barras / Producto
-            </button>
-            <button id="openDirectEntryBtn" class="btn btn-sm btn-outline">
-              ⚡ Calorías Directas
-            </button>
-            <button id="openWeightModalBtn" class="btn btn-sm btn-outline">
-              ⚖️ Registrar Peso
-            </button>
-          </div>
-        </div>
-
-        <div class="quick-input-body">
-          <div class="input-controls-row">
-            <div class="meal-select-group">
-              <label for="mealTypeSelect">Toma:</label>
-              <select id="mealTypeSelect" class="form-select">
-                <option value="desayuno">☕ Desayuno</option>
-                <option value="almuerzo">🥪 Almuerzo (Media mañana)</option>
-                <option value="comida">🍽️ Comida</option>
-                <option value="merienda">🍌 Merienda</option>
-                <option value="cena">🌙 Cena / Última toma</option>
-              </select>
-            </div>
-            <div class="input-hints">
-              <span>Ej: <em>vaso leche desnatada nesquik, 3 puñados avena, 3 tostadas cottage miel</em></span>
-            </div>
-          </div>
-
-          <!-- TIRA DE FRECUENTES / RECIENTES EN ESTA TOMA (1-TAP) -->
-          <div class="frequent-foods-bar">
-            <span class="frequent-label" id="frequentMealLabel">⚡ Frecuentes:</span>
-            <div id="frequentFoodsContainer" class="frequent-chips-scroll">
-              <!-- Renderizado dinámicamente por app.js -->
-            </div>
-          </div>
-
-          <div class="textarea-wrapper">
-            <textarea 
-              id="quickInputText" 
-              class="form-textarea" 
-              rows="2" 
-              placeholder="Escribe tus alimentos separados por comas o líneas (ej: 200g patata cocida, filete ternera, rodaja sandia)..."></textarea>
-          </div>
-
-          <div class="input-buttons-row">
-            <button id="parseBtn" class="btn btn-secondary">
-              🔍 Previsualizar Desglose
-            </button>
-            <button id="clearInputBtn" class="btn btn-text">
-              Limpiar
-            </button>
-          </div>
-        </div>
-
-        <!-- PREVISUALIZACIÓN INTERACTIVA DE CHIPS -->
-        <div id="parsedPreviewContainer" class="parsed-preview-box" style="display: none;">
-          <div class="preview-header">
-            <h4>Alimentos Detectados</h4>
-            <div id="previewTotals" class="preview-totals-text"></div>
-          </div>
-          <div id="parsedItemsList" class="parsed-chips-grid"></div>
-          <div class="preview-footer">
-            <button id="saveParsedMealBtn" class="btn btn-primary btn-lg">
-              ✓ Registrar en esta toma
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- SECCIONES DE TOMAS DEL DÍA (Desayuno, Almuerzo, Comida, Merienda, Cena) -->
       <div class="meal-sections-header">
         <h2>Registro del Día</h2>
@@ -367,7 +367,10 @@
           <h2>Catálogo Nutricional</h2>
           <p class="section-subtitle">Base de datos de tus alimentos reales con sus valores por porción y sinónimos para el parser.</p>
         </div>
-        <button id="openAddFoodBtn" class="btn btn-primary">+ Nuevo Alimento</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('openBarcodeModalBtn').click()">📷 Buscar en OpenFoodFacts</button>
+          <button id="openAddFoodBtn" class="btn btn-primary">+ Nuevo Alimento</button>
+        </div>
       </div>
 
       <div class="card filter-bar-card">
