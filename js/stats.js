@@ -298,6 +298,77 @@ class CalorieStats {
 
     return streak;
   }
+
+  /**
+   * Obtiene los alimentos más frecuentes o sugeridos para una toma concreta (1-Tap Quick Add)
+   */
+  getFrequentFoodsForMeal(mealType = "desayuno", limit = 8) {
+    let allLogs = this.db.getAllLogs();
+    let foods = this.db.getFoods();
+    let foodMap = new Map(foods.map(f => [f.id, f]));
+    let freqMap = new Map();
+
+    allLogs.forEach(log => {
+      let key = log.foodId || (log.foodName || "").toLowerCase().trim();
+      if (!key) return;
+      let isSameMeal = (log.mealType || "").toLowerCase() === mealType.toLowerCase();
+      let weight = isSameMeal ? 3 : 1; // Priorizar lo que el usuario suele tomar en esa misma comida
+
+      if (!freqMap.has(key)) {
+        let catalogFood = log.foodId ? foodMap.get(log.foodId) : null;
+        freqMap.set(key, {
+          foodId: log.foodId || (catalogFood ? catalogFood.id : null),
+          name: catalogFood ? catalogFood.name : log.foodName,
+          quantity: log.quantity || 1,
+          unit: log.unit || (catalogFood ? catalogFood.defaultUnit : "ración"),
+          calories: Math.round(log.calories || (catalogFood ? catalogFood.calories : 0)),
+          score: weight
+        });
+      } else {
+        let entry = freqMap.get(key);
+        entry.score += weight;
+      }
+    });
+
+    let sorted = Array.from(freqMap.values()).sort((a, b) => b.score - a.score);
+    let results = sorted.slice(0, limit);
+    let usedNames = new Set(results.map(r => (r.name || "").toLowerCase()));
+
+    // Completar con alimentos del catálogo afines a esa toma si aún no hay suficientes registros
+    if (results.length < limit) {
+      const mealCategoryHints = {
+        desayuno: ["desayuno", "lácteos", "frutas"],
+        almuerzo: ["snacks", "desayuno", "frutas", "proteínas"],
+        comida: ["platos", "proteínas", "carbohidratos"],
+        merienda: ["snacks", "desayuno", "frutas", "lácteos"],
+        cena: ["proteínas", "platos", "verduras", "carbohidratos"]
+      };
+      let hints = mealCategoryHints[mealType.toLowerCase()] || [];
+
+      let candidates = foods.filter(f => !usedNames.has(f.name.toLowerCase()));
+      candidates.sort((a, b) => {
+        let catA = (a.category || "").toLowerCase();
+        let catB = (b.category || "").toLowerCase();
+        let matchA = hints.some(h => catA.includes(h)) ? 1 : 0;
+        let matchB = hints.some(h => catB.includes(h)) ? 1 : 0;
+        return matchB - matchA;
+      });
+
+      for (let f of candidates) {
+        if (results.length >= limit) break;
+        results.push({
+          foodId: f.id,
+          name: f.name,
+          quantity: 1,
+          unit: f.defaultUnit || "ración",
+          calories: Math.round(f.calories || 0),
+          score: 0
+        });
+      }
+    }
+
+    return results;
+  }
 }
 
 if (typeof window !== "undefined") {

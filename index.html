@@ -228,6 +228,9 @@
             </div>
           </div>
           <div class="quick-actions-bar">
+            <button id="openBarcodeModalBtn" class="btn btn-sm btn-secondary" title="Escanear código de barras o buscar producto en OpenFoodFacts">
+              📷 Código de Barras / Producto
+            </button>
             <button id="openDirectEntryBtn" class="btn btn-sm btn-outline">
               ⚡ Calorías Directas
             </button>
@@ -251,6 +254,14 @@
             </div>
             <div class="input-hints">
               <span>Ej: <em>vaso leche desnatada nesquik, 3 puñados avena, 3 tostadas cottage miel</em></span>
+            </div>
+          </div>
+
+          <!-- TIRA DE FRECUENTES / RECIENTES EN ESTA TOMA (1-TAP) -->
+          <div class="frequent-foods-bar">
+            <span class="frequent-label" id="frequentMealLabel">⚡ Frecuentes:</span>
+            <div id="frequentFoodsContainer" class="frequent-chips-scroll">
+              <!-- Renderizado dinámicamente por app.js -->
             </div>
           </div>
 
@@ -687,6 +698,97 @@
           <button type="submit" class="btn btn-primary">Guardar Peso</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Escáner de Código de Barras y Buscador OpenFoodFacts (Sin IA) -->
+  <div id="barcodeModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>📷 Escáner Código de Barras / OpenFoodFacts</h3>
+        <button id="closeBarcodeModalBtn" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-form">
+        <p class="section-subtitle" style="margin-bottom: 0.75rem;">
+          Escanea un código de barras con la cámara o busca por código EAN / nombre de producto en la base de datos libre de <strong>OpenFoodFacts</strong>.
+        </p>
+
+        <!-- Barra de búsqueda por código o nombre + botón de cámara -->
+        <div class="barcode-search-row">
+          <input type="text" id="barcodeQueryInput" class="form-input" placeholder="Ej: 8480000... o 'Queso Cottage Mercadona', 'Avena'...">
+          <button type="button" id="barcodeSearchBtn" class="btn btn-primary">🔍 Buscar</button>
+          <button type="button" id="toggleCameraScanBtn" class="btn btn-outline" title="Abrir cámara para leer código de barras">📷 Cámara</button>
+        </div>
+
+        <!-- Visor de Cámara en vivo para lectura de código de barras -->
+        <div id="barcodeCameraBox" class="barcode-camera-box" style="display: none;">
+          <div class="camera-viewport-wrap">
+            <video id="barcodeVideo" playsinline muted></video>
+            <div class="barcode-laser-line"></div>
+          </div>
+          <div class="camera-status-row">
+            <span id="cameraStatusText" class="text-muted">Apunta al código de barras del envase...</span>
+            <button type="button" id="stopCameraScanBtn" class="btn btn-xs btn-outline">Detener cámara</button>
+          </div>
+        </div>
+
+        <!-- Estado / Lista de resultados de búsqueda -->
+        <div id="barcodeResultsStatus" class="barcode-status-msg"></div>
+        <div id="barcodeSearchList" class="barcode-results-list" style="display: none;"></div>
+
+        <!-- Tarjeta de Producto Seleccionado y Calculadora de Porción -->
+        <div id="barcodeSelectedProductBox" class="barcode-product-card" style="display: none;">
+          <div class="barcode-product-header">
+            <div>
+              <h4 id="offProductName">Producto</h4>
+              <span id="offProductBrand" class="text-muted" style="font-size: 0.8rem;">Marca</span>
+            </div>
+            <span id="offPer100Badge" class="badge badge-outline">Valores por 100g</span>
+          </div>
+
+          <div class="form-row-2" style="margin-top: 0.75rem;">
+            <div class="form-field">
+              <label for="offGramsInput">Cantidad consumida (gramos / ml):</label>
+              <div class="off-qty-quick-row">
+                <input type="number" id="offGramsInput" class="form-input" value="100" min="1" step="5">
+                <div class="off-preset-btns">
+                  <button type="button" class="btn btn-xs btn-outline off-gram-preset" data-grams="30">30g</button>
+                  <button type="button" class="btn btn-xs btn-outline off-gram-preset" data-grams="50">50g</button>
+                  <button type="button" class="btn btn-xs btn-outline off-gram-preset" data-grams="100">100g</button>
+                  <button type="button" class="btn btn-xs btn-outline off-gram-preset" data-grams="150">150g</button>
+                  <button type="button" class="btn btn-xs btn-outline off-gram-preset" data-grams="200">200g</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="offMealTypeSelect">Registrar en la toma:</label>
+              <select id="offMealTypeSelect" class="form-select">
+                <option value="desayuno">☕ Desayuno</option>
+                <option value="almuerzo">🥪 Almuerzo</option>
+                <option value="comida">🍽️ Comida</option>
+                <option value="merienda">🍌 Merienda</option>
+                <option value="cena">🌙 Cena / Última toma</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="off-calculated-macros" id="offCalculatedMacrosBox">
+            <span class="badge badge-cal" id="offCalcCal">0 kcal</span>
+            <span class="tag tag-p" id="offCalcProt">0g P</span>
+            <span class="tag tag-c" id="offCalcCarbs">0g C</span>
+            <span class="tag tag-f" id="offCalcFats">0g G</span>
+          </div>
+
+          <div class="modal-footer" style="margin-top: 1rem;">
+            <button type="button" id="offSaveToCatalogBtn" class="btn btn-outline">
+              💾 Guardar en mi Catálogo
+            </button>
+            <button type="button" id="offLogMealBtn" class="btn btn-primary">
+              ✓ Registrar en la Toma
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "calorias-app-v3";
+const CACHE_NAME = "calorias-app-v4";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -38,8 +38,12 @@ self.addEventListener("activate", (e) => {
 
 // Peticiones: Estrategia Network-First con fallback a caché
 self.addEventListener("fetch", (e) => {
-  // Ignorar peticiones a Google Apps Script (esas siempre van a la red)
-  if (e.request.url.includes("script.google.com") || e.request.url.includes("googleusercontent.com")) {
+  // Ignorar peticiones a Google Apps Script y OpenFoodFacts (siempre van a la red)
+  if (
+    e.request.url.includes("script.google.com") ||
+    e.request.url.includes("googleusercontent.com") ||
+    e.request.url.includes("openfoodfacts.org")
+  ) {
     return;
   }
 

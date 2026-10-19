@@ -100,6 +100,35 @@ document.addEventListener("DOMContentLoaded", () => {
     closeWeightModalBtn: document.getElementById("closeWeightModalBtn"),
     openWeightModalBtn: document.getElementById("openWeightModalBtn"),
 
+    // Frecuentes 1-Tap
+    frequentFoodsContainer: document.getElementById("frequentFoodsContainer"),
+    frequentMealLabel: document.getElementById("frequentMealLabel"),
+
+    // Modal Código de Barras / OpenFoodFacts
+    barcodeModal: document.getElementById("barcodeModal"),
+    openBarcodeModalBtn: document.getElementById("openBarcodeModalBtn"),
+    closeBarcodeModalBtn: document.getElementById("closeBarcodeModalBtn"),
+    barcodeQueryInput: document.getElementById("barcodeQueryInput"),
+    barcodeSearchBtn: document.getElementById("barcodeSearchBtn"),
+    toggleCameraScanBtn: document.getElementById("toggleCameraScanBtn"),
+    stopCameraScanBtn: document.getElementById("stopCameraScanBtn"),
+    barcodeCameraBox: document.getElementById("barcodeCameraBox"),
+    barcodeVideo: document.getElementById("barcodeVideo"),
+    cameraStatusText: document.getElementById("cameraStatusText"),
+    barcodeResultsStatus: document.getElementById("barcodeResultsStatus"),
+    barcodeSearchList: document.getElementById("barcodeSearchList"),
+    barcodeSelectedProductBox: document.getElementById("barcodeSelectedProductBox"),
+    offProductName: document.getElementById("offProductName"),
+    offProductBrand: document.getElementById("offProductBrand"),
+    offGramsInput: document.getElementById("offGramsInput"),
+    offMealTypeSelect: document.getElementById("offMealTypeSelect"),
+    offCalcCal: document.getElementById("offCalcCal"),
+    offCalcProt: document.getElementById("offCalcProt"),
+    offCalcCarbs: document.getElementById("offCalcCarbs"),
+    offCalcFats: document.getElementById("offCalcFats"),
+    offSaveToCatalogBtn: document.getElementById("offSaveToCatalogBtn"),
+    offLogMealBtn: document.getElementById("offLogMealBtn"),
+
     // Pestaña Alimentos
     foodSearchInput: document.getElementById("foodSearchInput"),
     foodCategoryFilter: document.getElementById("foodCategoryFilter"),
@@ -123,6 +152,11 @@ document.addEventListener("DOMContentLoaded", () => {
     importBackupBtn: document.getElementById("importBackupBtn"),
     backupFileInput: document.getElementById("backupFileInput")
   };
+
+  // Estado temporal del producto OpenFoodFacts seleccionado y cámara
+  let selectedOffProduct = null;
+  let cameraStream = null;
+  let barcodeScanTimer = null;
 
   // ==========================================
   // INICIALIZACIÓN
@@ -171,7 +205,11 @@ document.addEventListener("DOMContentLoaded", () => {
       db.saveSettings({ theme: newTheme });
     });
 
-    // Entrada rápida de texto
+    // Entrada rápida de texto y cambio de toma
+    elements.mealTypeSelect.addEventListener("change", (e) => {
+      state.selectedMealType = e.target.value;
+      renderFrequentFoods();
+    });
     elements.quickInputText.addEventListener("input", debounce(handleQuickInputLive, 300));
     elements.quickInputText.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -197,6 +235,48 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.openWeightModalBtn.addEventListener("click", () => openWeightModal());
     elements.closeWeightModalBtn.addEventListener("click", closeWeightModal);
     elements.weightForm.addEventListener("submit", handleWeightFormSubmit);
+
+    // Modal Código de Barras / OpenFoodFacts
+    if (elements.openBarcodeModalBtn) {
+      elements.openBarcodeModalBtn.addEventListener("click", openBarcodeModal);
+    }
+    if (elements.closeBarcodeModalBtn) {
+      elements.closeBarcodeModalBtn.addEventListener("click", closeBarcodeModal);
+    }
+    if (elements.barcodeSearchBtn) {
+      elements.barcodeSearchBtn.addEventListener("click", () => handleBarcodeSearch());
+    }
+    if (elements.barcodeQueryInput) {
+      elements.barcodeQueryInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleBarcodeSearch();
+        }
+      });
+    }
+    if (elements.toggleCameraScanBtn) {
+      elements.toggleCameraScanBtn.addEventListener("click", toggleCameraScan);
+    }
+    if (elements.stopCameraScanBtn) {
+      elements.stopCameraScanBtn.addEventListener("click", stopCameraScan);
+    }
+    if (elements.offGramsInput) {
+      elements.offGramsInput.addEventListener("input", recalculateOffMacros);
+    }
+    document.querySelectorAll(".off-gram-preset").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (elements.offGramsInput) {
+          elements.offGramsInput.value = btn.dataset.grams;
+          recalculateOffMacros();
+        }
+      });
+    });
+    if (elements.offSaveToCatalogBtn) {
+      elements.offSaveToCatalogBtn.addEventListener("click", handleOffSaveToCatalog);
+    }
+    if (elements.offLogMealBtn) {
+      elements.offLogMealBtn.addEventListener("click", handleOffLogMeal);
+    }
 
     // Búsqueda y filtros de alimentos
     elements.foodSearchInput.addEventListener("input", (e) => {
@@ -433,8 +513,101 @@ document.addEventListener("DOMContentLoaded", () => {
       "g"
     );
 
-    // 5. Renderizar secciones de comidas (Desayuno, Almuerzo, Comida, Merienda, Cena)
+    // 5. Renderizar sugerencias frecuentes 1-Tap y secciones de comidas
+    renderFrequentFoods();
     renderMealSections(summary.mealBreakdown);
+  }
+
+  function renderFrequentFoods() {
+    if (!elements.frequentFoodsContainer) return;
+    let meal = elements.mealTypeSelect ? elements.mealTypeSelect.value : state.selectedMealType;
+    const mealNames = {
+      desayuno: "Desayuno",
+      almuerzo: "Almuerzo",
+      comida: "Comida",
+      merienda: "Merienda",
+      cena: "Cena"
+    };
+    if (elements.frequentMealLabel) {
+      elements.frequentMealLabel.textContent = `⚡ Frecuentes (${mealNames[meal] || meal}):`;
+    }
+
+    let items = stats.getFrequentFoodsForMeal(meal, 8);
+    if (items.length === 0) {
+      elements.frequentFoodsContainer.innerHTML = `<span class="text-muted" style="font-size:0.75rem;">Sin sugerencias</span>`;
+      return;
+    }
+
+    elements.frequentFoodsContainer.innerHTML = items.map((it, idx) => {
+      let qtyPrefix = it.quantity && it.quantity !== 1 ? `${it.quantity} ` : "";
+      let unitStr = it.unit && it.unit !== "unidad" && it.unit !== "ración" ? `${it.unit} ` : "";
+      let phrase = `${qtyPrefix}${unitStr}${it.name}`.trim();
+      return `
+        <div class="freq-chip" data-phrase="${escapeHtml(phrase)}" data-index="${idx}">
+          <button type="button" class="freq-chip-text" title="Añadir al cuadro de texto para previsualizar">
+            ${escapeHtml(it.name)} <span class="freq-chip-cal">${it.calories} kcal</span>
+          </button>
+          <button type="button" class="freq-chip-quickadd" title="Registrar directamente con 1 toque en esta toma" data-index="${idx}">+</button>
+        </div>
+      `;
+    }).join("");
+
+    // Clic en el nombre -> añade al textarea y previsualiza
+    elements.frequentFoodsContainer.querySelectorAll(".freq-chip-text").forEach(btn => {
+      btn.addEventListener("click", () => {
+        let chip = btn.closest(".freq-chip");
+        let phrase = chip ? chip.dataset.phrase : "";
+        if (!phrase) return;
+        let cur = elements.quickInputText.value.trim();
+        elements.quickInputText.value = cur ? `${cur}, ${phrase}` : phrase;
+        handleQuickInputLive();
+      });
+    });
+
+    // Clic en '+' -> registra directamente en 1 toque
+    elements.frequentFoodsContainer.querySelectorAll(".freq-chip-quickadd").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        let idx = parseInt(btn.dataset.index);
+        let item = items[idx];
+        if (!item) return;
+
+        let catalogFood = item.foodId ? db.getFoods().find(f => f.id === item.foodId) : null;
+        let now = new Date();
+        let timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+        let calories = item.calories;
+        let protein = catalogFood ? catalogFood.protein : 0;
+        let carbs = catalogFood ? catalogFood.carbs : 0;
+        let fats = catalogFood ? catalogFood.fats : 0;
+
+        if (catalogFood) {
+          let macros = parser.calculateMacros(catalogFood, item.quantity || 1, item.unit || catalogFood.defaultUnit);
+          calories = macros.calories;
+          protein = macros.protein;
+          carbs = macros.carbs;
+          fats = macros.fats;
+        }
+
+        db.addLogs({
+          date: state.currentDate,
+          time: timeStr,
+          mealType: meal,
+          foodId: item.foodId,
+          foodName: item.name,
+          quantity: item.quantity || 1,
+          unit: item.unit || "ración",
+          calories,
+          protein,
+          carbs,
+          fats
+        });
+
+        renderDashboard();
+        updateSyncBadge();
+        showToast(`⚡ +1 ${item.name} registrado en ${mealNames[meal] || meal}`);
+      });
+    });
   }
 
   function renderMacroProgress(macroTarget, valEl, targetEl, badgeEl, progressEl, ringEl, ringClass, unit = "g") {
@@ -471,7 +644,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return "fill-danger";
   }
 
-  // Renderizado de las 5 tomas del día
+  function getPreviousDateISO(dateStr) {
+    let [y, m, d] = dateStr.split("-").map(Number);
+    let prev = new Date(y, m - 1, d);
+    prev.setDate(prev.getDate() - 1);
+    return formatDateISO(prev);
+  }
+
+  // Renderizado de las 5 tomas del día (con edición inline de cantidad, copiar de ayer y guardar como combo)
   function renderMealSections(mealBreakdown) {
     const mealMeta = {
       desayuno: { label: "Desayuno", icon: "☕" },
@@ -481,11 +661,15 @@ document.addEventListener("DOMContentLoaded", () => {
       cena: { label: "Cena / Última toma", icon: "🌙" }
     };
 
+    let prevDateStr = getPreviousDateISO(state.currentDate);
+    let prevDayLogs = db.getLogsForDate(prevDateStr);
+
     elements.mealSectionsContainer.innerHTML = "";
 
     Object.keys(mealMeta).forEach(mealKey => {
       let data = mealBreakdown[mealKey] || { calories: 0, protein: 0, fats: 0, carbs: 0, items: [] };
       let meta = mealMeta[mealKey];
+      let prevMealItems = prevDayLogs.filter(l => (l.mealType || "").toLowerCase() === mealKey);
 
       let card = document.createElement("div");
       card.className = "meal-card";
@@ -498,7 +682,11 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="meal-item-row" data-id="${item.id}">
             <div class="item-main-info">
               <span class="item-name">${escapeHtml(item.foodName)}</span>
-              <span class="item-qty">${item.quantity} ${escapeHtml(item.unit || "")}</span>
+              <div class="item-qty-stepper">
+                <button type="button" class="qty-step-btn" data-id="${item.id}" data-dir="-1" title="Reducir porción">−</button>
+                <span class="item-qty" title="Haz clic para escribir cantidad exacta" data-id="${item.id}">${item.quantity} ${escapeHtml(item.unit || "")}</span>
+                <button type="button" class="qty-step-btn" data-id="${item.id}" data-dir="1" title="Aumentar porción">+</button>
+              </div>
             </div>
             <div class="item-macros-tags">
               <span class="tag tag-cal">${Math.round(item.calories)} kcal</span>
@@ -528,9 +716,21 @@ document.addEventListener("DOMContentLoaded", () => {
           ${itemsHtml}
         </div>
         <div class="meal-card-footer">
-          <button class="btn btn-sm btn-outline quick-add-to-meal-btn" data-meal="${mealKey}">
-            + Añadir a ${meta.label.split(" ")[0]}
-          </button>
+          <div class="meal-footer-left">
+            <button class="btn btn-sm btn-outline quick-add-to-meal-btn" data-meal="${mealKey}">
+              + Añadir a ${meta.label.split(" ")[0]}
+            </button>
+            ${prevMealItems.length > 0 ? `
+              <button class="btn btn-sm btn-outline copy-yesterday-meal-btn" data-meal="${mealKey}" title="Copiar los ${prevMealItems.length} alimentos de ayer en ${meta.label}">
+                📥 Copiar de ayer (${prevMealItems.length})
+              </button>
+            ` : ""}
+            ${data.items.length > 0 ? `
+              <button class="btn btn-sm btn-outline save-meal-combo-btn" data-meal="${mealKey}" title="Guardar esta toma como plantilla en Combos">
+                ⭐ Guardar Combo
+              </button>
+            ` : ""}
+          </div>
           ${data.items.length > 0 ? `
             <button class="btn btn-sm btn-text-danger clear-meal-btn" data-meal="${mealKey}">
               Vaciar toma
@@ -540,6 +740,31 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
 
       elements.mealSectionsContainer.appendChild(card);
+    });
+
+    // Ajuste inline de cantidad (- / +)
+    elements.mealSectionsContainer.querySelectorAll(".qty-step-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        let id = btn.dataset.id;
+        let dir = parseInt(btn.dataset.dir);
+        adjustLoggedItemQuantity(id, dir);
+      });
+    });
+
+    // Clic sobre el texto de cantidad para editar valor exacto
+    elements.mealSectionsContainer.querySelectorAll(".item-qty").forEach(span => {
+      span.addEventListener("click", () => {
+        let id = span.dataset.id;
+        let log = db.getLogsForDate(state.currentDate).find(l => l.id === id);
+        if (!log) return;
+        let inputVal = prompt(`Nueva cantidad para "${log.foodName}" (${log.unit || "ración"}):`, log.quantity);
+        if (inputVal !== null) {
+          let newQty = parseFloat(inputVal.replace(",", "."));
+          if (!isNaN(newQty) && newQty > 0) {
+            setLoggedItemQuantity(log, newQty);
+          }
+        }
+      });
     });
 
     // Eventos dentro de las tarjetas de comidas
@@ -567,10 +792,121 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => {
         let meal = btn.dataset.meal;
         elements.mealTypeSelect.value = meal;
+        state.selectedMealType = meal;
+        renderFrequentFoods();
         elements.quickInputText.focus();
         elements.quickInputText.scrollIntoView({ behavior: "smooth" });
       });
     });
+
+    // Copiar toma de ayer
+    elements.mealSectionsContainer.querySelectorAll(".copy-yesterday-meal-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        let meal = btn.dataset.meal;
+        let itemsToCopy = prevDayLogs.filter(l => (l.mealType || "").toLowerCase() === meal);
+        if (itemsToCopy.length === 0) return;
+
+        let now = new Date();
+        let timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        let cloned = itemsToCopy.map(it => ({
+          date: state.currentDate,
+          time: timeStr,
+          mealType: meal,
+          foodId: it.foodId,
+          foodName: it.foodName,
+          quantity: it.quantity,
+          unit: it.unit,
+          calories: it.calories,
+          protein: it.protein,
+          carbs: it.carbs,
+          fats: it.fats
+        }));
+
+        db.addLogs(cloned);
+        renderDashboard();
+        updateSyncBadge();
+        showToast(`📥 Copiados ${cloned.length} alimentos de ayer en ${capitalize(meal)}`);
+      });
+    });
+
+    // Guardar toma actual como Combo
+    elements.mealSectionsContainer.querySelectorAll(".save-meal-combo-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        let meal = btn.dataset.meal;
+        let currentItems = (mealBreakdown[meal] && mealBreakdown[meal].items) || [];
+        if (currentItems.length === 0) return;
+
+        let name = prompt(`Nombre para este Combo de ${capitalize(meal)}:`, `Mi ${capitalize(meal)} habitual`);
+        if (!name || !name.trim()) return;
+
+        // Para los items que no tengan foodId, crearlos o vincularlos al catálogo
+        let comboItems = [];
+        currentItems.forEach(it => {
+          let fId = it.foodId;
+          if (!fId) {
+            let created = db.addFood({
+              name: it.foodName,
+              category: capitalize(meal),
+              defaultUnit: it.unit || "ración",
+              unitGrams: 0,
+              calories: Math.round((it.calories / (it.quantity || 1)) * 10) / 10,
+              protein: Math.round((it.protein / (it.quantity || 1)) * 10) / 10,
+              carbs: Math.round((it.carbs / (it.quantity || 1)) * 10) / 10,
+              fats: Math.round((it.fats / (it.quantity || 1)) * 10) / 10,
+              aliases: [it.foodName.toLowerCase()]
+            });
+            fId = created.id;
+          }
+          comboItems.push({
+            foodId: fId,
+            quantity: it.quantity || 1,
+            unit: it.unit || "ración"
+          });
+        });
+
+        db.addCombo({
+          name: name.trim(),
+          mealType: meal,
+          items: comboItems
+        });
+
+        parser.setFoods(db.getFoods());
+        renderCombos();
+        updateSyncBadge();
+        showToast(`⭐ Combo "${name.trim()}" guardado en tus Favoritos`);
+      });
+    });
+  }
+
+  function adjustLoggedItemQuantity(logId, dir) {
+    let logs = db.getLogsForDate(state.currentDate);
+    let log = logs.find(l => l.id === logId);
+    if (!log) return;
+
+    let unit = (log.unit || "").toLowerCase();
+    let isGrams = unit === "g" || unit === "gr" || unit === "gramos" || unit === "ml";
+    let step = isGrams ? 25 : 0.5;
+    let minQty = isGrams ? 10 : 0.5;
+    let newQty = Math.max(minQty, Math.round((parseFloat(log.quantity || 1) + dir * step) * 10) / 10);
+
+    setLoggedItemQuantity(log, newQty);
+  }
+
+  function setLoggedItemQuantity(log, newQty) {
+    let oldQty = parseFloat(log.quantity) || 1;
+    let ratio = newQty / oldQty;
+
+    db.updateLog({
+      id: log.id,
+      quantity: newQty,
+      calories: Math.round(log.calories * ratio * 10) / 10,
+      protein: Math.round(log.protein * ratio * 10) / 10,
+      carbs: Math.round(log.carbs * ratio * 10) / 10,
+      fats: Math.round(log.fats * ratio * 10) / 10
+    });
+
+    renderDashboard();
+    updateSyncBadge();
   }
 
   // ==========================================
@@ -1022,6 +1358,334 @@ document.addEventListener("DOMContentLoaded", () => {
       renderSettings();
       updateSyncBadge();
       showToast(`✓ Peso registrado: ${weightVal} kg`);
+    }
+  }
+
+  // ==========================================
+  // ESCÁNER DE CÓDIGO DE BARRAS & OPENFOODFACTS (SIN IA)
+  // ==========================================
+  function openBarcodeModal() {
+    if (!elements.barcodeModal) return;
+    selectedOffProduct = null;
+    if (elements.barcodeQueryInput) elements.barcodeQueryInput.value = "";
+    if (elements.barcodeResultsStatus) elements.barcodeResultsStatus.innerHTML = "";
+    if (elements.barcodeSearchList) {
+      elements.barcodeSearchList.style.display = "none";
+      elements.barcodeSearchList.innerHTML = "";
+    }
+    if (elements.barcodeSelectedProductBox) {
+      elements.barcodeSelectedProductBox.style.display = "none";
+    }
+    if (elements.offMealTypeSelect) {
+      elements.offMealTypeSelect.value = elements.mealTypeSelect ? elements.mealTypeSelect.value : state.selectedMealType;
+    }
+    elements.barcodeModal.style.display = "flex";
+    setTimeout(() => {
+      if (elements.barcodeQueryInput) elements.barcodeQueryInput.focus();
+    }, 60);
+  }
+
+  function closeBarcodeModal() {
+    stopCameraScan();
+    if (elements.barcodeModal) {
+      elements.barcodeModal.style.display = "none";
+    }
+  }
+
+  function extractNutrimentsPer100g(product) {
+    let n = product.nutriments || {};
+    let kcal =
+      parseFloat(n["energy-kcal_100g"]) ||
+      parseFloat(n["energy-kcal"]) ||
+      (parseFloat(n["energy_100g"]) ? Math.round(parseFloat(n["energy_100g"]) / 4.184) : 0) ||
+      0;
+    let protein = parseFloat(n.proteins_100g ?? n.proteins ?? 0) || 0;
+    let carbs = parseFloat(n.carbohydrates_100g ?? n.carbohydrates ?? 0) || 0;
+    let fats = parseFloat(n.fat_100g ?? n.fat ?? 0) || 0;
+
+    return {
+      calories: Math.round(kcal * 10) / 10,
+      protein: Math.round(protein * 10) / 10,
+      carbs: Math.round(carbs * 10) / 10,
+      fats: Math.round(fats * 10) / 10
+    };
+  }
+
+  async function handleBarcodeSearch(forcedQuery = null) {
+    let query = (forcedQuery !== null ? forcedQuery : (elements.barcodeQueryInput ? elements.barcodeQueryInput.value : "")).trim();
+    if (!query) {
+      if (elements.barcodeResultsStatus) {
+        elements.barcodeResultsStatus.innerHTML = `<span class="text-warning">Escribe un código de barras (EAN) o el nombre de un producto.</span>`;
+      }
+      return;
+    }
+
+    if (elements.barcodeResultsStatus) {
+      elements.barcodeResultsStatus.innerHTML = `<span class="loading-spinner"></span> Consultando OpenFoodFacts...`;
+    }
+    if (elements.barcodeSearchList) {
+      elements.barcodeSearchList.style.display = "none";
+    }
+    if (elements.barcodeSelectedProductBox) {
+      elements.barcodeSelectedProductBox.style.display = "none";
+    }
+
+    let isBarcode = /^\d{6,14}$/.test(query.replace(/\s+/g, ""));
+    try {
+      if (isBarcode) {
+        let code = query.replace(/\s+/g, "");
+        let res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
+        let data = await res.json();
+        if (data && data.status === 1 && data.product) {
+          let p = data.product;
+          let macros100 = extractNutrimentsPer100g(p);
+          let item = {
+            code: code,
+            name: p.product_name_es || p.product_name || `Producto ${code}`,
+            brand: p.brands || "Sin marca",
+            servingGrams: parseFloat(p.serving_quantity) || 100,
+            ...macros100
+          };
+          if (elements.barcodeResultsStatus) {
+            elements.barcodeResultsStatus.innerHTML = `<span class="text-success">✓ Código ${escapeHtml(code)} encontrado</span>`;
+          }
+          selectOffProduct(item);
+        } else {
+          if (elements.barcodeResultsStatus) {
+            elements.barcodeResultsStatus.innerHTML = `<span class="text-danger">No se encontró ningún producto con el código ${escapeHtml(code)}. Prueba buscando por su nombre.</span>`;
+          }
+        }
+      } else {
+        let url = `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8`;
+        let res = await fetch(url);
+        let data = await res.json();
+        let products = (data && Array.isArray(data.products)) ? data.products : [];
+        let valid = products
+          .map(p => {
+            let m = extractNutrimentsPer100g(p);
+            return {
+              code: p.code || "",
+              name: (p.product_name_es || p.product_name || "").trim(),
+              brand: (p.brands || "").trim(),
+              servingGrams: parseFloat(p.serving_quantity) || 100,
+              ...m
+            };
+          })
+          .filter(p => p.name && (p.calories > 0 || p.protein > 0 || p.carbs > 0 || p.fats > 0));
+
+        if (valid.length === 0) {
+          if (elements.barcodeResultsStatus) {
+            elements.barcodeResultsStatus.innerHTML = `<span class="text-warning">Sin resultados con datos nutricionales para "${escapeHtml(query)}".</span>`;
+          }
+          return;
+        }
+
+        if (elements.barcodeResultsStatus) {
+          elements.barcodeResultsStatus.innerHTML = `<span class="text-muted">Selecciona un producto (${valid.length} encontrados):</span>`;
+        }
+        renderOffSearchResults(valid);
+      }
+    } catch (err) {
+      if (elements.barcodeResultsStatus) {
+        elements.barcodeResultsStatus.innerHTML = `<span class="text-danger">Error al conectar con OpenFoodFacts: ${escapeHtml(err.message)}</span>`;
+      }
+    }
+  }
+
+  function renderOffSearchResults(items) {
+    if (!elements.barcodeSearchList) return;
+    elements.barcodeSearchList.style.display = "flex";
+    elements.barcodeSearchList.innerHTML = items.map((it, idx) => `
+      <button type="button" class="off-result-row" data-index="${idx}">
+        <div class="off-result-main">
+          <strong>${escapeHtml(it.name)}</strong>
+          ${it.brand ? `<span class="off-result-brand">${escapeHtml(it.brand)}</span>` : ""}
+        </div>
+        <div class="off-result-macros">
+          <span class="badge badge-cal">${Math.round(it.calories)} kcal/100g</span>
+          <span>${it.protein}P · ${it.carbs}C · ${it.fats}G</span>
+        </div>
+      </button>
+    `).join("");
+
+    elements.barcodeSearchList.querySelectorAll(".off-result-row").forEach(btn => {
+      btn.addEventListener("click", () => {
+        let idx = parseInt(btn.dataset.index);
+        if (items[idx]) {
+          selectOffProduct(items[idx]);
+        }
+      });
+    });
+  }
+
+  function selectOffProduct(product) {
+    selectedOffProduct = product;
+    if (elements.offProductName) {
+      elements.offProductName.textContent = product.name;
+    }
+    if (elements.offProductBrand) {
+      elements.offProductBrand.textContent = product.brand ? `${product.brand} ${product.code ? `· EAN ${product.code}` : ""}` : "";
+    }
+    if (elements.offGramsInput) {
+      elements.offGramsInput.value = product.servingGrams && product.servingGrams > 0 && product.servingGrams <= 500
+        ? Math.round(product.servingGrams)
+        : 100;
+    }
+    if (elements.barcodeSelectedProductBox) {
+      elements.barcodeSelectedProductBox.style.display = "block";
+    }
+    recalculateOffMacros();
+  }
+
+  function recalculateOffMacros() {
+    if (!selectedOffProduct) return;
+    let grams = parseFloat(elements.offGramsInput ? elements.offGramsInput.value : 100) || 100;
+    let factor = grams / 100;
+
+    let cal = Math.round(selectedOffProduct.calories * factor);
+    let prot = Math.round(selectedOffProduct.protein * factor * 10) / 10;
+    let carbs = Math.round(selectedOffProduct.carbs * factor * 10) / 10;
+    let fats = Math.round(selectedOffProduct.fats * factor * 10) / 10;
+
+    if (elements.offCalcCal) elements.offCalcCal.textContent = `${cal} kcal`;
+    if (elements.offCalcProt) elements.offCalcProt.textContent = `${prot}g Proteína`;
+    if (elements.offCalcCarbs) elements.offCalcCarbs.textContent = `${carbs}g Carbos`;
+    if (elements.offCalcFats) elements.offCalcFats.textContent = `${fats}g Grasas`;
+  }
+
+  function handleOffSaveToCatalog() {
+    if (!selectedOffProduct) return null;
+    let fullName = selectedOffProduct.brand && !selectedOffProduct.name.toLowerCase().includes(selectedOffProduct.brand.split(",")[0].toLowerCase())
+      ? `${selectedOffProduct.name} (${selectedOffProduct.brand.split(",")[0].trim()})`
+      : selectedOffProduct.name;
+
+    let saved = db.addFood({
+      name: fullName,
+      category: "Supermercado",
+      defaultUnit: "100g",
+      unitGrams: 100,
+      calories: selectedOffProduct.calories,
+      protein: selectedOffProduct.protein,
+      carbs: selectedOffProduct.carbs,
+      fats: selectedOffProduct.fats,
+      aliases: [
+        selectedOffProduct.name.toLowerCase(),
+        fullName.toLowerCase(),
+        selectedOffProduct.code || ""
+      ].filter(Boolean)
+    });
+
+    parser.setFoods(db.getFoods());
+    renderFoodsTable();
+    populateCategoryFilters();
+    updateSyncBadge();
+    showToast(`💾 "${fullName}" guardado en tu Catálogo (por 100g)`);
+    return saved;
+  }
+
+  function handleOffLogMeal() {
+    if (!selectedOffProduct) return;
+    let grams = parseFloat(elements.offGramsInput ? elements.offGramsInput.value : 100) || 100;
+    let factor = grams / 100;
+    let meal = elements.offMealTypeSelect ? elements.offMealTypeSelect.value : state.selectedMealType;
+
+    let now = new Date();
+    let timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    db.addLogs({
+      date: state.currentDate,
+      time: timeStr,
+      mealType: meal,
+      foodId: null,
+      foodName: selectedOffProduct.name,
+      quantity: grams,
+      unit: "g",
+      calories: Math.round(selectedOffProduct.calories * factor),
+      protein: Math.round(selectedOffProduct.protein * factor * 10) / 10,
+      carbs: Math.round(selectedOffProduct.carbs * factor * 10) / 10,
+      fats: Math.round(selectedOffProduct.fats * factor * 10) / 10
+    });
+
+    closeBarcodeModal();
+    renderDashboard();
+    updateSyncBadge();
+    showToast(`✓ ${grams}g de ${selectedOffProduct.name} registrado en ${capitalize(meal)}`);
+  }
+
+  async function toggleCameraScan() {
+    if (cameraStream) {
+      stopCameraScan();
+      return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (elements.barcodeResultsStatus) {
+        elements.barcodeResultsStatus.innerHTML = `<span class="text-warning">Tu navegador no permite acceso directo a cámara en este contexto. Escribe el código EAN o nombre arriba.</span>`;
+      }
+      return;
+    }
+
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+      if (elements.barcodeVideo) {
+        elements.barcodeVideo.srcObject = cameraStream;
+        await elements.barcodeVideo.play();
+      }
+      if (elements.barcodeCameraBox) {
+        elements.barcodeCameraBox.style.display = "block";
+      }
+
+      if ("BarcodeDetector" in window) {
+        let detector = new window.BarcodeDetector({
+          formats: ["ean_13", "ean_8", "upc_a", "upc_e"]
+        });
+        if (elements.cameraStatusText) {
+          elements.cameraStatusText.textContent = "Escaneando código de barras en tiempo real...";
+        }
+        barcodeScanTimer = setInterval(async () => {
+          if (!elements.barcodeVideo || elements.barcodeVideo.readyState < 2) return;
+          try {
+            let barcodes = await detector.detect(elements.barcodeVideo);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              let detectedCode = barcodes[0].rawValue;
+              if (elements.barcodeQueryInput) {
+                elements.barcodeQueryInput.value = detectedCode;
+              }
+              stopCameraScan();
+              handleBarcodeSearch(detectedCode);
+            }
+          } catch (e) {
+            // Ignorar fotograma
+          }
+        }, 350);
+      } else {
+        if (elements.cameraStatusText) {
+          elements.cameraStatusText.textContent = "Cámara activa. Si tu navegador no auto-detecta EAN, escribe los dígitos del código arriba.";
+        }
+      }
+    } catch (err) {
+      if (elements.barcodeResultsStatus) {
+        elements.barcodeResultsStatus.innerHTML = `<span class="text-warning">No se pudo abrir la cámara (${escapeHtml(err.message)}). Introduce el código o nombre manualmente.</span>`;
+      }
+    }
+  }
+
+  function stopCameraScan() {
+    if (barcodeScanTimer) {
+      clearInterval(barcodeScanTimer);
+      barcodeScanTimer = null;
+    }
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    if (elements.barcodeVideo) {
+      elements.barcodeVideo.srcObject = null;
+    }
+    if (elements.barcodeCameraBox) {
+      elements.barcodeCameraBox.style.display = "none";
     }
   }
 

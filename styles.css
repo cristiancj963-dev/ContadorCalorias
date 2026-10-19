@@ -1151,9 +1151,48 @@ body {
   font-size: 0.9rem;
 }
 
-.item-qty {
-  font-size: 0.8rem;
+.item-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.25rem;
+}
+
+.qty-step-btn {
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.qty-step-btn:hover {
+  background-color: var(--bg-card-hover);
+  color: var(--accent-primary);
+}
+
+.item-qty {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  padding: 0 0.25rem;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--border-light);
+}
+
+.item-qty:hover {
+  color: var(--text-primary);
 }
 
 .item-macros-tags {
@@ -1180,6 +1219,249 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.meal-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+/* Tira de Frecuentes 1-Tap */
+.frequent-foods-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.frequent-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.frequent-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  flex: 1;
+}
+
+.freq-chip {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: border-color 0.15s ease;
+}
+
+.freq-chip:hover {
+  border-color: var(--accent-primary);
+}
+
+.freq-chip-text {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.freq-chip-cal {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.freq-chip-quickadd {
+  background-color: rgba(16, 185, 129, 0.14);
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--accent-primary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.freq-chip-quickadd:hover {
+  background-color: var(--accent-primary);
+  color: #ffffff;
+}
+
+/* Modal Escáner Código de Barras & OpenFoodFacts */
+.barcode-search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.barcode-search-row .form-input {
+  flex: 1;
+  min-width: 190px;
+}
+
+.barcode-camera-box {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.camera-viewport-wrap {
+  position: relative;
+  width: 100%;
+  max-height: 220px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#barcodeVideo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.barcode-laser-line {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background-color: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: laserScan 1.8s infinite alternate ease-in-out;
+}
+
+@keyframes laserScan {
+  from { top: 20%; }
+  to { top: 80%; }
+}
+
+.camera-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.barcode-status-msg {
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+  min-height: 20px;
+}
+
+.barcode-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 210px;
+  overflow-y: auto;
+  margin-bottom: 0.85rem;
+}
+
+.off-result-row {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.off-result-row:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-card-hover);
+}
+
+.off-result-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.off-result-brand {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.off-result-macros {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.barcode-product-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+}
+
+.barcode-product-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.off-qty-quick-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.off-preset-btns {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.off-calculated-macros {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--border-color);
 }
 
 /* ==========================================================================
