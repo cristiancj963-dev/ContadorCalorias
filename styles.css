@@ -614,12 +614,377 @@ body {
 }
 
 /* ==========================================================================
+   TIRA SEMANAL INTERACTIVA & ANILLOS CAL AI (MACRO RINGS)
+   ========================================================================== */
+
+.week-strip-card {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.week-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.45rem;
+}
+
+.week-day-pill {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all 0.18s ease;
+}
+
+.week-day-pill:hover {
+  background-color: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.week-day-pill.is-today {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.week-day-pill.selected {
+  background-color: var(--bg-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.week-day-letter {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.week-day-ring-wrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-day-svg {
+  width: 36px;
+  height: 36px;
+  transform: rotate(-90deg);
+}
+
+.week-ring-track {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 3;
+  opacity: 0.5;
+}
+
+.week-ring-progress {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+}
+
+.week-ring-in_range { stroke: var(--status-success); }
+.week-ring-low { stroke: var(--status-warning); }
+.week-ring-high { stroke: var(--status-danger); }
+.week-ring-empty { stroke: transparent; }
+
+.week-day-num {
+  position: absolute;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.week-day-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+.week-day-dot.week-ring-in_range { background-color: var(--status-success); }
+.week-day-dot.week-ring-low { background-color: var(--status-warning); }
+.week-day-dot.week-ring-high { background-color: var(--status-danger); }
+
+/* Layout Principal Cal AI: Hero Card + 3 Macro Cards */
+.calai-dashboard-wrapper {
+  display: grid;
+  grid-template-columns: 1.15fr 1.85fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  align-items: stretch;
+}
+
+@media (max-width: 960px) {
+  .calai-dashboard-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+.calai-hero-card {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 60%), var(--bg-card);
+}
+
+.calai-hero-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.calai-hero-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.calai-big-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--text-primary);
+}
+
+.calai-consumed-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+
+.calai-thin-bar {
+  height: 6px;
+  margin: 0.35rem 0;
+}
+
+.calai-ring-box {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calai-hero-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--bg-primary);
+  stroke-width: 10;
+}
+
+.ring-progress {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.3s ease;
+}
+
+.calai-ring-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.ring-fire-icon {
+  font-size: 1.35rem;
+}
+
+.ring-pct-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Health Score Cal AI */
+.calai-health-score-bar {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+}
+
+.health-score-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.health-score-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-wrap: wrap;
+}
+
+.health-score-sub {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.health-score-badge {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.health-score-badge.score-in_range { color: var(--status-success); border-color: rgba(16, 185, 129, 0.4); }
+.health-score-badge.score-low { color: var(--status-warning); border-color: rgba(245, 158, 11, 0.4); }
+.health-score-badge.score-high { color: var(--status-danger); border-color: rgba(239, 68, 68, 0.4); }
+
+.health-score-track {
+  height: 6px;
+  background-color: var(--bg-card);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.health-score-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.45s ease;
+}
+
+.health-score-fill.fill-success { background-color: var(--status-success); }
+.health-score-fill.fill-warning { background-color: var(--status-warning); }
+.health-score-fill.fill-danger { background-color: var(--status-danger); }
+
+/* Tarjetas de Anillos de Macros (Proteína, Carbos, Grasas) */
+.calai-macros-grid {
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .calai-macros-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.macro-ring-card {
+  gap: 0.75rem;
+}
+
+.macro-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.macro-ring-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.macro-ring-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.macro-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring-track-sm {
+  fill: none;
+  stroke: var(--bg-primary);
+  stroke-width: 6.5;
+}
+
+.ring-progress-sm {
+  fill: none;
+  stroke-width: 6.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.3s ease;
+}
+
+.ring-protein { stroke: #38bdf8; }
+.ring-carbs { stroke: #facc15; }
+.ring-fats { stroke: #f87171; }
+
+.stroke-in_range.ring-cal { stroke: var(--status-success); }
+.stroke-low.ring-cal { stroke: var(--accent-primary); }
+.stroke-high.ring-cal { stroke: var(--status-danger); }
+
+.stroke-high.ring-protein,
+.stroke-high.ring-carbs,
+.stroke-high.ring-fats {
+  stroke: var(--status-danger);
+}
+
+.macro-ring-icon {
+  position: absolute;
+  font-size: 1.15rem;
+}
+
+.macro-ring-details {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ==========================================================================
    MÉTRICAS & BARRAS DE PROGRESO
    ========================================================================== */
 
 .dashboard-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -628,7 +993,7 @@ body {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.15rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1303,7 +1668,34 @@ body {
     padding-top: 0.4rem;
   }
 
-  /* Tarjetas de métricas y macros en móvil */
+  /* Tarjetas de métricas, anillos Cal AI y tira semanal en móvil */
+  .week-strip-card {
+    padding: 0.6rem 0.45rem;
+  }
+
+  .week-strip-grid {
+    gap: 0.2rem;
+  }
+
+  .week-day-ring-wrap {
+    width: 32px;
+    height: 32px;
+  }
+
+  .week-day-svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .calai-big-number {
+    font-size: 2rem;
+  }
+
+  .calai-ring-box {
+    width: 98px;
+    height: 98px;
+  }
+
   .dashboard-metrics-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;

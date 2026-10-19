@@ -44,26 +44,39 @@ document.addEventListener("DOMContentLoaded", () => {
     previewTotals: document.getElementById("previewTotals"),
     saveParsedMealBtn: document.getElementById("saveParsedMealBtn"),
 
-    // Dashboard Metas y Barras
+    // Dashboard Metas, Anillos Cal AI y Tira Semanal
+    weekStripContainer: document.getElementById("weekStripContainer"),
+    calRemainingLabel: document.getElementById("calRemainingLabel"),
+    calRemainingBigText: document.getElementById("calRemainingBigText"),
     calConsumedText: document.getElementById("calConsumedText"),
     calTargetText: document.getElementById("calTargetText"),
     calDiffBadge: document.getElementById("calDiffBadge"),
     calProgressBar: document.getElementById("calProgressBar"),
+    calRingCircle: document.getElementById("calRingCircle"),
+    calRingPctText: document.getElementById("calRingPctText"),
+
+    // Health Score Cal AI
+    healthScoreLabel: document.getElementById("healthScoreLabel"),
+    healthScoreValue: document.getElementById("healthScoreValue"),
+    healthScoreFill: document.getElementById("healthScoreFill"),
     
     proteinValueText: document.getElementById("proteinValueText"),
     proteinTargetText: document.getElementById("proteinTargetText"),
     proteinStatusBadge: document.getElementById("proteinStatusBadge"),
     proteinProgressBar: document.getElementById("proteinProgressBar"),
+    proteinRingCircle: document.getElementById("proteinRingCircle"),
 
     carbsValueText: document.getElementById("carbsValueText"),
     carbsTargetText: document.getElementById("carbsTargetText"),
     carbsStatusBadge: document.getElementById("carbsStatusBadge"),
     carbsProgressBar: document.getElementById("carbsProgressBar"),
+    carbsRingCircle: document.getElementById("carbsRingCircle"),
 
     fatsValueText: document.getElementById("fatsValueText"),
     fatsTargetText: document.getElementById("fatsTargetText"),
     fatsStatusBadge: document.getElementById("fatsStatusBadge"),
     fatsProgressBar: document.getElementById("fatsProgressBar"),
+    fatsRingCircle: document.getElementById("fatsRingCircle"),
 
     // Tomas del día
     mealSectionsContainer: document.getElementById("mealSectionsContainer"),
@@ -279,20 +292,87 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // DASHBOARD Y PROGRESO DE MACROS
+  // DASHBOARD, TIRA SEMANAL Y ANILLOS CAL AI
   // ==========================================
+  function renderWeekStrip() {
+    if (!elements.weekStripContainer) return;
+    let todayStr = getTodayString();
+    let days = stats.getWeekStripData(state.currentDate, todayStr);
+    const miniCircumference = 94.25; // 2 * PI * 15
+
+    elements.weekStripContainer.innerHTML = days.map(day => {
+      let offset = miniCircumference - (Math.min(day.pct, 100) / 100) * miniCircumference;
+      let statusRingClass = day.hasLogs ? `week-ring-${day.status}` : "week-ring-empty";
+      let activeClass = day.isSelected ? "selected" : "";
+      let todayClass = day.isToday ? "is-today" : "";
+      let tooltip = day.hasLogs
+        ? `${day.dayName} ${day.dayNumber}: ${day.calories} / ${day.targetCalories} kcal`
+        : `${day.dayName} ${day.dayNumber}: Sin registros`;
+
+      return `
+        <button type="button" class="week-day-pill ${activeClass} ${todayClass}" data-date="${day.date}" title="${tooltip}">
+          <span class="week-day-letter">${day.dayLetter}</span>
+          <div class="week-day-ring-wrap">
+            <svg class="week-day-svg" viewBox="0 0 36 36">
+              <circle class="week-ring-track" cx="18" cy="18" r="15"></circle>
+              <circle class="week-ring-progress ${statusRingClass}" cx="18" cy="18" r="15"
+                stroke-dasharray="${miniCircumference}"
+                stroke-dashoffset="${offset.toFixed(2)}"></circle>
+            </svg>
+            <span class="week-day-num">${day.dayNumber}</span>
+          </div>
+          <span class="week-day-dot ${statusRingClass}"></span>
+        </button>
+      `;
+    }).join("");
+
+    elements.weekStripContainer.querySelectorAll(".week-day-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        setDate(btn.dataset.date);
+      });
+    });
+  }
+
   function renderDashboard() {
     let summary = stats.getDaySummary(state.currentDate);
-    let settings = db.getSettings();
 
-    // Calorías
+    // 1. Tira semanal estilo Cal AI
+    renderWeekStrip();
+
+    // 2. Calorías Hero + Anillo Principal
     let cal = summary.targets.calories;
+    let remaining = cal.target - cal.current;
+
+    if (elements.calRemainingLabel && elements.calRemainingBigText) {
+      if (remaining >= 0) {
+        elements.calRemainingLabel.textContent = "Calorías Restantes";
+        elements.calRemainingBigText.textContent = `${remaining.toLocaleString("es-ES")}`;
+        elements.calRemainingBigText.className = "calai-big-number";
+      } else {
+        elements.calRemainingLabel.textContent = "Calorías Extra (Superávit)";
+        elements.calRemainingBigText.textContent = `+${Math.abs(remaining).toLocaleString("es-ES")}`;
+        elements.calRemainingBigText.className = `calai-big-number ${cal.status === "in_range" ? "text-success" : "text-danger"}`;
+      }
+    }
+
     elements.calConsumedText.textContent = `${cal.current.toLocaleString("es-ES")} kcal`;
     elements.calTargetText.textContent = `Meta: ${cal.target} kcal (${cal.min}-${cal.max})`;
     
-    let calPct = Math.min(Math.round((cal.current / cal.target) * 100), 120);
-    elements.calProgressBar.style.width = `${Math.min(calPct, 100)}%`;
+    let rawCalPct = cal.target > 0 ? Math.round((cal.current / cal.target) * 100) : 0;
+    let clampedCalPct = Math.min(Math.max(rawCalPct, 0), 100);
+    elements.calProgressBar.style.width = `${clampedCalPct}%`;
     elements.calProgressBar.className = `progress-fill ${getStatusClass(cal.status)}`;
+
+    // Actualizar Anillo SVG Principal (r=50 -> circunferencia = 314.16)
+    if (elements.calRingCircle) {
+      const heroCircumference = 314.16;
+      let offset = heroCircumference - (clampedCalPct / 100) * heroCircumference;
+      elements.calRingCircle.style.strokeDashoffset = offset.toFixed(2);
+      elements.calRingCircle.className.baseVal = `ring-progress ring-cal stroke-${cal.status}`;
+    }
+    if (elements.calRingPctText) {
+      elements.calRingPctText.textContent = `${rawCalPct}%`;
+    }
 
     if (cal.status === "in_range") {
       elements.calDiffBadge.textContent = `En objetivo ✓ (${cal.diff >= 0 ? "+" : ""}${cal.diff} kcal)`;
@@ -305,13 +385,29 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.calDiffBadge.className = "badge badge-danger";
     }
 
-    // Macros
+    // 3. Health Score Diario (Cal AI Score)
+    let hs = summary.healthScore || { score100: 0, score10: "—", label: "Registra tu primera toma", status: "neutral" };
+    if (elements.healthScoreValue) {
+      elements.healthScoreValue.textContent = `${hs.score10} / 10`;
+      elements.healthScoreValue.className = `health-score-badge score-${hs.status}`;
+    }
+    if (elements.healthScoreLabel) {
+      elements.healthScoreLabel.textContent = hs.label;
+    }
+    if (elements.healthScoreFill) {
+      elements.healthScoreFill.style.width = `${hs.score100}%`;
+      elements.healthScoreFill.className = `health-score-fill ${getStatusClass(hs.status === "neutral" ? "low" : hs.status)}`;
+    }
+
+    // 4. Anillos de Macronutrientes (Proteína, Carbohidratos, Grasas)
     renderMacroProgress(
       summary.targets.protein,
       elements.proteinValueText,
       elements.proteinTargetText,
       elements.proteinStatusBadge,
       elements.proteinProgressBar,
+      elements.proteinRingCircle,
+      "ring-protein",
       "g"
     );
 
@@ -321,6 +417,8 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.carbsTargetText,
       elements.carbsStatusBadge,
       elements.carbsProgressBar,
+      elements.carbsRingCircle,
+      "ring-carbs",
       "g"
     );
 
@@ -330,26 +428,36 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.fatsTargetText,
       elements.fatsStatusBadge,
       elements.fatsProgressBar,
+      elements.fatsRingCircle,
+      "ring-fats",
       "g"
     );
 
-    // Renderizar secciones de comidas (Desayuno, Almuerzo, Comida, Merienda, Cena)
+    // 5. Renderizar secciones de comidas (Desayuno, Almuerzo, Comida, Merienda, Cena)
     renderMealSections(summary.mealBreakdown);
   }
 
-  function renderMacroProgress(macroTarget, valEl, targetEl, badgeEl, progressEl, unit = "g") {
+  function renderMacroProgress(macroTarget, valEl, targetEl, badgeEl, progressEl, ringEl, ringClass, unit = "g") {
     valEl.textContent = `${macroTarget.current} ${unit}`;
     targetEl.textContent = `Meta: ${macroTarget.target}${unit} (${macroTarget.min}-${macroTarget.max})`;
 
-    let pct = Math.min(macroTarget.pct, 100);
+    let pct = Math.min(Math.max(macroTarget.pct, 0), 100);
     progressEl.style.width = `${pct}%`;
     progressEl.className = `progress-fill ${getStatusClass(macroTarget.status)}`;
+
+    // Actualizar anillo SVG del macro (r=28 -> circunferencia = 175.93)
+    if (ringEl) {
+      const macroCircumference = 175.93;
+      let offset = macroCircumference - (pct / 100) * macroCircumference;
+      ringEl.style.strokeDashoffset = offset.toFixed(2);
+      ringEl.className.baseVal = `ring-progress-sm ${ringClass} stroke-${macroTarget.status}`;
+    }
 
     if (macroTarget.status === "in_range") {
       badgeEl.textContent = "✓ En rango";
       badgeEl.className = "badge badge-success";
     } else if (macroTarget.status === "low") {
-      badgeEl.textContent = `-${Math.abs(macroTarget.diff)}${unit}`;
+      badgeEl.textContent = `Faltan ${Math.abs(macroTarget.diff)}${unit}`;
       badgeEl.className = "badge badge-warning";
     } else {
       badgeEl.textContent = `+${macroTarget.diff}${unit}`;

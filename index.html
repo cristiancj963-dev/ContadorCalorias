@@ -78,6 +78,145 @@
     <!-- ======================================================== -->
     <section id="dashboardTab" class="tab-content active">
 
+      <!-- TIRA SEMANAL INTERACTIVA ESTILO CAL AI (7-DAY STRIP) -->
+      <div class="card week-strip-card">
+        <div id="weekStripContainer" class="week-strip-grid" aria-label="Calendario semanal rápido">
+          <!-- Renderizado dinámicamente por app.js -->
+        </div>
+      </div>
+
+      <!-- PANEL DE RESUMEN DIARIO ESTILO CAL AI (ANILLOS + HEALTH SCORE) -->
+      <div class="calai-dashboard-wrapper">
+
+        <!-- Tarjeta Hero de Calorías (Calorías Restantes + Anillo Principal + Health Score) -->
+        <div class="card calai-hero-card">
+          <div class="calai-hero-main">
+            <div class="calai-hero-info">
+              <span class="metric-label" id="calRemainingLabel">Calorías Restantes</span>
+              <div class="calai-big-number" id="calRemainingBigText">2.750</div>
+              <div class="calai-consumed-row">
+                <span>Consumidas: <strong id="calConsumedText">0 kcal</strong></span>
+                <span id="calDiffBadge" class="badge badge-neutral">0 kcal</span>
+              </div>
+              <div class="progress-bar-container calai-thin-bar">
+                <div id="calProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+              </div>
+              <div class="metric-footer" id="calTargetText">Meta: 2.750 kcal (2.750-2.800)</div>
+            </div>
+
+            <!-- Anillo Circular Principal de Calorías -->
+            <div class="calai-ring-box">
+              <svg class="calai-hero-svg" viewBox="0 0 120 120">
+                <circle class="ring-track" cx="60" cy="60" r="50"></circle>
+                <circle id="calRingCircle" class="ring-progress ring-cal" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"></circle>
+              </svg>
+              <div class="calai-ring-center">
+                <span class="ring-fire-icon">🔥</span>
+                <span id="calRingPctText" class="ring-pct-text">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Barra inferior de Health Score (Cal AI Daily Score) -->
+          <div class="calai-health-score-bar">
+            <div class="health-score-header">
+              <div class="health-score-title">
+                <span class="health-heart-icon">💚</span>
+                <span>Health Score del Día</span>
+                <span id="healthScoreLabel" class="health-score-sub">Registra tu primera toma</span>
+              </div>
+              <span id="healthScoreValue" class="health-score-badge">— / 10</span>
+            </div>
+            <div class="health-score-track">
+              <div id="healthScoreFill" class="health-score-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjetas de Anillos de Macronutrientes (Proteína, Carbos, Grasas) -->
+        <div class="dashboard-metrics-grid calai-macros-grid">
+
+          <!-- Tarjeta de Proteína -->
+          <div class="metric-card macro-ring-card">
+            <div class="macro-card-header">
+              <div>
+                <span class="metric-label">Proteína</span>
+                <div class="metric-val-number" id="proteinValueText">0 g</div>
+              </div>
+              <span id="proteinStatusBadge" class="badge badge-neutral">En objetivo</span>
+            </div>
+            <div class="macro-ring-row">
+              <div class="macro-ring-wrap">
+                <svg class="macro-ring-svg" viewBox="0 0 72 72">
+                  <circle class="ring-track-sm" cx="36" cy="36" r="28"></circle>
+                  <circle id="proteinRingCircle" class="ring-progress-sm ring-protein" cx="36" cy="36" r="28" stroke-dasharray="175.93" stroke-dashoffset="175.93"></circle>
+                </svg>
+                <span class="macro-ring-icon">🥩</span>
+              </div>
+              <div class="macro-ring-details">
+                <div class="progress-bar-container">
+                  <div id="proteinProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+                </div>
+                <div class="metric-footer" id="proteinTargetText">Meta: 155g (150-160g)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta de Carbohidratos -->
+          <div class="metric-card macro-ring-card">
+            <div class="macro-card-header">
+              <div>
+                <span class="metric-label">Carbohidratos</span>
+                <div class="metric-val-number" id="carbsValueText">0 g</div>
+              </div>
+              <span id="carbsStatusBadge" class="badge badge-neutral">En objetivo</span>
+            </div>
+            <div class="macro-ring-row">
+              <div class="macro-ring-wrap">
+                <svg class="macro-ring-svg" viewBox="0 0 72 72">
+                  <circle class="ring-track-sm" cx="36" cy="36" r="28"></circle>
+                  <circle id="carbsRingCircle" class="ring-progress-sm ring-carbs" cx="36" cy="36" r="28" stroke-dasharray="175.93" stroke-dashoffset="175.93"></circle>
+                </svg>
+                <span class="macro-ring-icon">🌾</span>
+              </div>
+              <div class="macro-ring-details">
+                <div class="progress-bar-container">
+                  <div id="carbsProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+                </div>
+                <div class="metric-footer" id="carbsTargetText">Meta: 350g (340-360g)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta de Grasas -->
+          <div class="metric-card macro-ring-card">
+            <div class="macro-card-header">
+              <div>
+                <span class="metric-label">Grasas</span>
+                <div class="metric-val-number" id="fatsValueText">0 g</div>
+              </div>
+              <span id="fatsStatusBadge" class="badge badge-neutral">En objetivo</span>
+            </div>
+            <div class="macro-ring-row">
+              <div class="macro-ring-wrap">
+                <svg class="macro-ring-svg" viewBox="0 0 72 72">
+                  <circle class="ring-track-sm" cx="36" cy="36" r="28"></circle>
+                  <circle id="fatsRingCircle" class="ring-progress-sm ring-fats" cx="36" cy="36" r="28" stroke-dasharray="175.93" stroke-dashoffset="175.93"></circle>
+                </svg>
+                <span class="macro-ring-icon">🥑</span>
+              </div>
+              <div class="macro-ring-details">
+                <div class="progress-bar-container">
+                  <div id="fatsProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
+                </div>
+                <div class="metric-footer" id="fatsTargetText">Meta: 78g (75-80g)</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ENTRADA RÁPIDA NATURAL -->
       <div class="card quick-input-card">
         <div class="quick-input-header">
@@ -146,71 +285,6 @@
             </button>
           </div>
         </div>
-      </div>
-
-      <!-- PANEL DE RESUMEN DIARIO DE METAS Y MACROS -->
-      <div class="dashboard-metrics-grid">
-        
-        <!-- Tarjeta de Calorías -->
-        <div class="metric-card cal-metric-card">
-          <div class="metric-card-top">
-            <div>
-              <span class="metric-label">Calorías Totales</span>
-              <div class="metric-big-number" id="calConsumedText">0 kcal</div>
-            </div>
-            <span id="calDiffBadge" class="badge badge-neutral">0 kcal</span>
-          </div>
-          <div class="progress-bar-container">
-            <div id="calProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
-          </div>
-          <div class="metric-footer" id="calTargetText">Meta: 2.750 kcal (2.750-2.800)</div>
-        </div>
-
-        <!-- Tarjeta de Proteína -->
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div>
-              <span class="metric-label">Proteína (Músculo)</span>
-              <div class="metric-val-number" id="proteinValueText">0 g</div>
-            </div>
-            <span id="proteinStatusBadge" class="badge badge-neutral">En objetivo</span>
-          </div>
-          <div class="progress-bar-container">
-            <div id="proteinProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
-          </div>
-          <div class="metric-footer" id="proteinTargetText">Meta: 155g (150-160g)</div>
-        </div>
-
-        <!-- Tarjeta de Carbohidratos -->
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div>
-              <span class="metric-label">Carbohidratos (Energía)</span>
-              <div class="metric-val-number" id="carbsValueText">0 g</div>
-            </div>
-            <span id="carbsStatusBadge" class="badge badge-neutral">En objetivo</span>
-          </div>
-          <div class="progress-bar-container">
-            <div id="carbsProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
-          </div>
-          <div class="metric-footer" id="carbsTargetText">Meta: 350g (340-360g)</div>
-        </div>
-
-        <!-- Tarjeta de Grasas -->
-        <div class="metric-card">
-          <div class="metric-card-top">
-            <div>
-              <span class="metric-label">Grasas (Hormonal)</span>
-              <div class="metric-val-number" id="fatsValueText">0 g</div>
-            </div>
-            <span id="fatsStatusBadge" class="badge badge-neutral">En objetivo</span>
-          </div>
-          <div class="progress-bar-container">
-            <div id="fatsProgressBar" class="progress-fill fill-success" style="width: 0%;"></div>
-          </div>
-          <div class="metric-footer" id="fatsTargetText">Meta: 78g (75-80g)</div>
-        </div>
-
       </div>
 
       <!-- SECCIONES DE TOMAS DEL DÍA (Desayuno, Almuerzo, Comida, Merienda, Cena) -->

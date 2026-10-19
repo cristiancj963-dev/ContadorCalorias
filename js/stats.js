@@ -97,12 +97,134 @@ class CalorieStats {
       }
     };
 
+    let healthScore = this.calculateHealthScore(totals, targets);
+
     return {
       date: dateStr,
       totals,
       mealBreakdown,
-      targets
+      targets,
+      healthScore
     };
+  }
+
+  /**
+   * Calcula el Health Score / Puntuación Nutricional (estilo Cal AI, de 0 a 10 y 0 a 100)
+   * ponderando adherencia calórica (40%), objetivo proteico (35%) y balance de carbos/grasas (25%)
+   */
+  calculateHealthScore(totals, targets) {
+    if (!totals || totals.itemCount === 0 || totals.calories === 0) {
+      return {
+        score100: 0,
+        score10: "—",
+        label: "Registra tu primera toma",
+        status: "neutral"
+      };
+    }
+
+    const scoreDimension = (cur, min, max, target) => {
+      if (cur >= min && cur <= max) return 1.0;
+      if (cur < min) {
+        return Math.max(0, cur / (min || target || 1));
+      }
+      // Si se excede del máximo, penalizar progresivamente según el exceso
+      let overPct = (cur - max) / (target || max || 1);
+      return Math.max(0, 1 - overPct * 1.4);
+    };
+
+    let calScore = scoreDimension(
+      targets.calories.current,
+      targets.calories.min,
+      targets.calories.max,
+      targets.calories.target
+    );
+    let protScore = scoreDimension(
+      targets.protein.current,
+      targets.protein.min,
+      targets.protein.max,
+      targets.protein.target
+    );
+    let carbsScore = scoreDimension(
+      targets.carbs.current,
+      targets.carbs.min,
+      targets.carbs.max,
+      targets.carbs.target
+    );
+    let fatsScore = scoreDimension(
+      targets.fats.current,
+      targets.fats.min,
+      targets.fats.max,
+      targets.fats.target
+    );
+
+    let raw100 = Math.round((calScore * 40) + (protScore * 35) + (carbsScore * 12.5) + (fatsScore * 12.5));
+    let score100 = Math.max(1, Math.min(100, raw100));
+    let score10 = (score100 / 10).toFixed(1);
+
+    let label = "En progreso";
+    let status = "low";
+    if (score100 >= 88) {
+      label = "Excelente · Recomposición óptima";
+      status = "in_range";
+    } else if (score100 >= 70) {
+      label = "Buen balance diario";
+      status = "in_range";
+    } else if (targets.calories.status === "high" || targets.fats.status === "high") {
+      label = "Rango superado";
+      status = "high";
+    }
+
+    return {
+      score100,
+      score10,
+      label,
+      status
+    };
+  }
+
+  /**
+   * Obtiene los datos de los 7 días de la semana (Lunes a Domingo) para la tira estilo Cal AI
+   */
+  getWeekStripData(referenceDateStr, todayStr) {
+    let [y, m, d] = referenceDateStr.split("-").map(Number);
+    let refDate = new Date(y, m - 1, d);
+    // Ajustar para que la semana empiece en Lunes (0 = Lunes ... 6 = Domingo)
+    let dayOfWeek = (refDate.getDay() + 6) % 7;
+    let monday = new Date(refDate);
+    monday.setDate(refDate.getDate() - dayOfWeek);
+
+    const dayLetters = ["L", "M", "X", "J", "V", "S", "D"];
+    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    let days = [];
+
+    for (let i = 0; i < 7; i++) {
+      let cur = new Date(monday);
+      cur.setDate(monday.getDate() + i);
+      let cy = cur.getFullYear();
+      let cm = String(cur.getMonth() + 1).padStart(2, "0");
+      let cd = String(cur.getDate()).padStart(2, "0");
+      let iso = `${cy}-${cm}-${cd}`;
+
+      let summary = this.getDaySummary(iso);
+      let calTarget = summary.targets.calories;
+      let hasLogs = summary.totals.itemCount > 0;
+
+      days.push({
+        date: iso,
+        dayLetter: dayLetters[i],
+        dayName: dayNames[i],
+        dayNumber: cur.getDate(),
+        isToday: iso === todayStr,
+        isSelected: iso === referenceDateStr,
+        hasLogs,
+        calories: calTarget.current,
+        targetCalories: calTarget.target,
+        pct: hasLogs ? Math.min(Math.round((calTarget.current / (calTarget.target || 2750)) * 100), 100) : 0,
+        status: hasLogs ? calTarget.status : "empty"
+      });
+    }
+
+    return days;
   }
 
   /**
