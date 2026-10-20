@@ -438,7 +438,14 @@ class CalorieDB {
             carbs: parseFloat(log.carbs || log.carbohidratos || 0),
             createdAt: log.createdAt || log.createdat || log.creadoen || new Date().toISOString()
           })).filter(l => l.date && l.calories !== undefined);
-          localStorage.setItem(this.STORAGE_KEYS.LOGS, JSON.stringify(normalizedLogs));
+
+          // Fusión bidireccional segura: combina Google Sheets con registros locales sin borrar nada
+          let localLogs = this.getAllLogs();
+          let logsMap = new Map();
+          normalizedLogs.forEach(l => logsMap.set(l.id, l));
+          localLogs.forEach(l => logsMap.set(l.id, l));
+          let mergedLogs = Array.from(logsMap.values());
+          localStorage.setItem(this.STORAGE_KEYS.LOGS, JSON.stringify(mergedLogs));
         }
 
         if (result.data.foods && Array.isArray(result.data.foods)) {
@@ -477,8 +484,23 @@ class CalorieDB {
               aliases: aliasList.length > 0 ? aliasList : [String(f.name || "").toLowerCase()]
             };
           }).filter(f => f.name);
-          if (normalizedFoods.length > 0) {
-            localStorage.setItem(this.STORAGE_KEYS.FOODS, JSON.stringify(normalizedFoods));
+
+          // Fusión bidireccional segura de alimentos
+          let localFoods = this.getFoods();
+          let foodsMap = new Map();
+          normalizedFoods.forEach(f => foodsMap.set(f.id, f));
+          localFoods.forEach(f => {
+            let existing = foodsMap.get(f.id);
+            if (existing) {
+              let mergedAliases = Array.from(new Set([...(existing.aliases || []), ...(f.aliases || [])])).filter(Boolean);
+              foodsMap.set(f.id, { ...existing, ...f, aliases: mergedAliases });
+            } else {
+              foodsMap.set(f.id, f);
+            }
+          });
+          let mergedFoods = Array.from(foodsMap.values());
+          if (mergedFoods.length > 0) {
+            localStorage.setItem(this.STORAGE_KEYS.FOODS, JSON.stringify(mergedFoods));
           }
         }
 
@@ -491,7 +513,13 @@ class CalorieDB {
             date: formatToLocalDateString(w.date || w.fecha),
             weight: parseFloat(w.weight || w.peso || 0)
           })).filter(w => w.date && w.weight > 0);
-          localStorage.setItem(this.STORAGE_KEYS.WEIGHTS, JSON.stringify(normalizedWeights));
+
+          let localWeights = this.getWeights();
+          let weightsMap = new Map();
+          normalizedWeights.forEach(w => weightsMap.set(w.date, w));
+          localWeights.forEach(w => weightsMap.set(w.date, w));
+          let mergedWeights = Array.from(weightsMap.values());
+          localStorage.setItem(this.STORAGE_KEYS.WEIGHTS, JSON.stringify(mergedWeights));
         }
 
         if (result.data.settings) {
