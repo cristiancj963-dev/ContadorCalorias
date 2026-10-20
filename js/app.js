@@ -1267,6 +1267,17 @@ document.addEventListener("DOMContentLoaded", () => {
     let aliasesRaw = document.getElementById("foodAliasesInput").value;
     let aliases = aliasesRaw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 
+    let nameClean = name.toLowerCase().trim();
+    let nameWithoutParen = nameClean.replace(/\(.*?\)/g, "").trim();
+    let uniqueAliases = Array.from(new Set([
+      nameClean,
+      parser.normalize(nameClean),
+      nameWithoutParen,
+      parser.normalize(nameWithoutParen),
+      ...aliases,
+      ...aliases.map(a => parser.normalize(a))
+    ])).filter(Boolean);
+
     let foodPayload = {
       name,
       category,
@@ -1276,7 +1287,7 @@ document.addEventListener("DOMContentLoaded", () => {
       protein,
       carbs,
       fats,
-      aliases: [name.toLowerCase(), ...aliases]
+      aliases: uniqueAliases
     };
 
     if (id) {
@@ -1434,18 +1445,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let isBarcode = /^\d{6,14}$/.test(query.replace(/\s+/g, ""));
     try {
+      const fetchWithTimeout = async (url, timeoutMs = 5000) => {
+        let controller = new AbortController();
+        let timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          let res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
+          return res;
+        } catch (err) {
+          clearTimeout(timer);
+          throw err;
+        }
+      };
+
       if (isBarcode) {
         let code = query.replace(/\s+/g, "");
-        let res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
-        let data = await res.json();
-        if (data && data.status === 1 && data.product) {
-          let p = data.product;
-          let macros100 = extractNutrimentsPer100g(p);
+        let barcodeUrls = [
+          `https://world.openfoodfacts.net/api/v2/product/${encodeURIComponent(code)}.json`,
+          `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`,
+          `https://world.openfoodfacts.net/api/v0/product/${encodeURIComponent(code)}.json`,
+          `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`
+        ];
+        let foundProduct = null;
+        for (let bUrl of barcodeUrls) {
+          try {
+            let res = await fetchWithTimeout(bUrl, 4500);
+            if (!res.ok) continue;
+            let data = await res.json();
+            if (data && data.status === 1 && data.product) {
+              foundProduct = data.product;
+              break;
+            }
+          } catch (e) {
+            // Probar siguiente réplica
+          }
+        }
+
+        if (foundProduct) {
+          let macros100 = extractNutrimentsPer100g(foundProduct);
           let item = {
             code: code,
-            name: p.product_name_es || p.product_name || `Producto ${code}`,
-            brand: p.brands || "Sin marca",
-            servingGrams: parseFloat(p.serving_quantity) || 100,
+            name: foundProduct.product_name_es || foundProduct.product_name || `Producto ${code}`,
+            brand: foundProduct.brands || "Sin marca",
+            servingGrams: parseFloat(foundProduct.serving_quantity) || 100,
             ...macros100
           };
           if (elements.barcodeResultsStatus) {
@@ -1458,10 +1500,33 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
       } else {
-        let url = `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8`;
-        let res = await fetch(url);
-        let data = await res.json();
-        let products = (data && Array.isArray(data.products)) ? data.products : [];
+        let searchUrls = [
+          `https://world.openfoodfacts.net/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity`,
+          `https://es.openfoodfacts.net/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity`,
+          `https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity`,
+          `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`
+        ];
+        let products = [];
+        let anyMirrorResponded = false;
+        for (let sUrl of searchUrls) {
+          try {
+            let res = await fetchWithTimeout(sUrl, 5000);
+            if (!res.ok) continue;
+            let data = await res.json();
+            anyMirrorResponded = true;
+            if (data && Array.isArray(data.products) && data.products.length > 0) {
+              products = data.products;
+              break;
+            }
+          } catch (e) {
+            // Probar siguiente réplica
+          }
+        }
+
+        if (!anyMirrorResponded && products.length === 0) {
+          throw new Error("Servidores de OpenFoodFacts no disponibles en este momento. Reintenta en unos instantes.");
+        }
+
         let valid = products
           .map(p => {
             let m = extractNutrimentsPer100g(p);

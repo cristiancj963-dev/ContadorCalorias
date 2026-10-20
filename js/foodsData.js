@@ -8,7 +8,7 @@ const DEFAULT_FOODS = [
   {
     id: "leche_desnatada_vaso",
     name: "Leche desnatada (1 vaso)",
-    aliases: ["leche desnatada", "vaso leche desnatada", "vaso de leche desnatada", "leche desnatada vaso", "leche desnatada 250ml"],
+    aliases: ["leche", "leche desnatada", "vaso de leche", "vaso leche", "vaso leche desnatada", "vaso de leche desnatada", "leche desnatada vaso", "leche desnatada 250ml", "desnatada"],
     category: "Lácteos",
     defaultUnit: "vaso",
     unitGrams: 250,
@@ -21,7 +21,7 @@ const DEFAULT_FOODS = [
   {
     id: "leche_semidesnatada_vaso",
     name: "Leche semidesnatada (1 vaso)",
-    aliases: ["leche semidesnatada", "vaso leche semidesnatada", "leche semi", "vaso leche semi"],
+    aliases: ["leche semi", "leche semidesnatada", "vaso leche semidesnatada", "semidesnatada", "vaso leche semi"],
     category: "Lácteos",
     defaultUnit: "vaso",
     unitGrams: 250,
@@ -336,7 +336,7 @@ const DEFAULT_FOODS = [
   {
     id: "lomo_embuchado_loncha",
     name: "Lomo embuchado / lonchas de lomo (1 loncha)",
-    aliases: ["lomo sin grasa", "lonchas de lomo", "lomo embuchado", "lonchas lomo"],
+    aliases: ["lomo", "lomo embuchado", "lonchas de lomo", "lonchas lomo", "lomo sin grasa", "cinta de lomo"],
     category: "Carnes/Embutidos",
     defaultUnit: "loncha",
     unitGrams: 10,
@@ -429,7 +429,7 @@ const DEFAULT_FOODS = [
   {
     id: "tortilla_francesa_2h",
     name: "Tortilla francesa (2 huevos)",
-    aliases: ["tortilla francesa", "tortilla francesa 2 huevos", "tortilla francesa de 2 huevos"],
+    aliases: ["tortilla", "tortilla francesa", "tortilla de huevos", "francesa", "tortilla francesa 2 huevos", "tortilla francesa de 2 huevos"],
     category: "Huevos",
     defaultUnit: "unidad",
     unitGrams: 120,
@@ -442,7 +442,7 @@ const DEFAULT_FOODS = [
   {
     id: "pincho_tortilla_patata",
     name: "Pincho de tortilla de patata",
-    aliases: ["pincho de tortilla", "pincho de tortilla de patata", "tortilla de patata", "tortilla patata"],
+    aliases: ["tortilla de patata", "tortilla patata", "pincho de tortilla", "pincho tortilla", "pincho de tortilla de patata", "tortilla española"],
     category: "Platos",
     defaultUnit: "unidad",
     unitGrams: 150,
@@ -458,8 +458,8 @@ const DEFAULT_FOODS = [
     id: "pechuga_pollo_plancha",
     name: "Pechuga de pollo a la plancha (100g)",
     aliases: [
-      "pechuga de pollo", "pechuga pollo", "filete pechuga de pollo", "filete pechuga pollo",
-      "pollo a la plancha", "pechuga de pollo a la plancha", "pechugas a la plancha"
+      "pollo", "pechuga", "pechugas", "pechuga de pollo", "pechuga pollo", "filete pechuga de pollo", "filete pechuga pollo",
+      "filete de pollo", "filete pollo", "pollo a la plancha", "pechuga de pollo a la plancha", "pechugas a la plancha", "pollo plancha"
     ],
     category: "Carnes",
     defaultUnit: "g",
@@ -823,7 +823,7 @@ const DEFAULT_FOODS = [
   {
     id: "cafe_cortado",
     name: "Café cortado",
-    aliases: ["cortado", "cafe cortado", "café cortado"],
+    aliases: ["cafe", "café", "cortado", "cafe cortado", "café cortado", "cafe solo", "café solo", "cafe con leche", "café con leche", "taza de cafe", "taza de café"],
     category: "Bebidas",
     defaultUnit: "taza",
     unitGrams: 60,
@@ -910,6 +910,71 @@ const DEFAULT_FOODS = [
     fats: 3.5,
     carbs: 21.0,
     allowedUnits: ["unidad", "unidades"]
+  },
+  {
+    id: "manzana_unidad",
+    name: "Manzana (1 unidad ~180g)",
+    aliases: ["manzana", "manzanas", "manzana golden", "manzana fuji", "pieza de manzana", "1 manzana"],
+    category: "Frutas",
+    defaultUnit: "unidad",
+    unitGrams: 180,
+    calories: 95,
+    protein: 0.5,
+    fats: 0.3,
+    carbs: 25.0,
+    allowedUnits: ["unidad", "unidades", "pieza", "piezas", "g", "gr"]
+  },
+  {
+    id: "tomate_unidad",
+    name: "Tomate ensalada (1 ud ~150g)",
+    aliases: ["tomate", "tomates", "tomate ensalada", "rodajas de tomate", "1 tomate"],
+    category: "Verduras",
+    defaultUnit: "unidad",
+    unitGrams: 150,
+    calories: 27,
+    protein: 1.3,
+    fats: 0.3,
+    carbs: 5.8,
+    allowedUnits: ["unidad", "unidades", "tomate", "tomates", "g", "gr"]
+  },
+  {
+    id: "aceite_oliva_cucharada",
+    name: "Aceite de oliva virgen extra (1 cucharada)",
+    aliases: ["aceite", "aceite de oliva", "aove", "cucharada de aceite", "cucharada aceite", "chorro de aceite", "chorro aceite"],
+    category: "Grasas",
+    defaultUnit: "cucharada",
+    unitGrams: 10,
+    calories: 88,
+    protein: 0.0,
+    fats: 10.0,
+    carbs: 0.0,
+    allowedUnits: ["cucharada", "cucharadas", "chorro", "chorros", "g", "gr", "ml"]
+  },
+  {
+    id: "yogur_natural_desnatado",
+    name: "Yogur natural / 0% (1 ud 125g)",
+    aliases: ["yogur", "yogures", "yogurt", "yogur natural", "yogur desnatado", "yogur 0%"],
+    category: "Lácteos",
+    defaultUnit: "unidad",
+    unitGrams: 125,
+    calories: 55,
+    protein: 5.0,
+    fats: 0.2,
+    carbs: 6.0,
+    allowedUnits: ["unidad", "unidades", "yogur", "yogures"]
+  },
+  {
+    id: "queso_semicurado_loncha",
+    name: "Queso semicurado (1 loncha ~25g)",
+    aliases: ["queso", "queso semicurado", "loncha queso", "loncha de queso", "queso curado"],
+    category: "Lácteos",
+    defaultUnit: "loncha",
+    unitGrams: 25,
+    calories: 95,
+    protein: 6.5,
+    fats: 7.5,
+    carbs: 0.5,
+    allowedUnits: ["loncha", "lonchas", "g", "gr", "porcion"]
   }
 ];
 

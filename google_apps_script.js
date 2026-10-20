@@ -23,10 +23,19 @@ function doGet(e) {
     setupSheetsIfMissing(ss);
 
     if (action === "GET_FULL_DATA") {
+      let rawCombos = readSheetObjects(ss.getSheetByName("Combos"));
+      let parsedCombos = rawCombos.map(c => {
+        let items = c.items;
+        if (typeof items === "string" && items.startsWith("[")) {
+          try { items = JSON.parse(items); } catch (e) {}
+        }
+        return { ...c, items: Array.isArray(items) ? items : [] };
+      });
+
       const data = {
         logs: readSheetObjects(ss.getSheetByName("Diario")),
         foods: readSheetObjects(ss.getSheetByName("Alimentos")),
-        combos: readSheetObjects(ss.getSheetByName("Combos")),
+        combos: parsedCombos,
         weights: readSheetObjects(ss.getSheetByName("Pesos")),
         settings: readSettingsSheet(ss.getSheetByName("Configuracion"))
       };
@@ -63,8 +72,18 @@ function doPost(e) {
       ], postData.fullState.logs || []);
 
       writeSheetObjects(ss.getSheetByName("Alimentos"), [
-        "id", "name", "category", "defaultUnit", "unitGrams", "calories", "protein", "fats", "carbs"
-      ], postData.fullState.foods || []);
+        "id", "name", "category", "defaultUnit", "unitGrams", "calories", "protein", "fats", "carbs", "aliases"
+      ], (postData.fullState.foods || []).map(f => ({
+        ...f,
+        aliases: Array.isArray(f.aliases) ? f.aliases.join(", ") : (f.aliases || f.sinonimos || "")
+      })));
+
+      writeSheetObjects(ss.getSheetByName("Combos"), [
+        "id", "name", "items", "calories", "protein", "fats", "carbs"
+      ], (postData.fullState.combos || []).map(c => ({
+        ...c,
+        items: typeof c.items === "string" ? c.items : JSON.stringify(c.items || [])
+      })));
 
       writeSheetObjects(ss.getSheetByName("Pesos"), [
         "date", "weight"
@@ -103,7 +122,9 @@ function setupSheetsIfMissing(ss) {
       if (name === "Diario") {
         sheet.appendRow(["ID", "Fecha", "Hora", "Toma", "FoodID", "Alimento", "Cantidad", "Unidad", "Calorias", "Proteina", "Grasas", "Carbohidratos", "CreadoEn"]);
       } else if (name === "Alimentos") {
-        sheet.appendRow(["ID", "Nombre", "Categoria", "UnidadBase", "GramosUnidad", "Calorias", "Proteina", "Grasas", "Carbohidratos"]);
+        sheet.appendRow(["ID", "Nombre", "Categoria", "UnidadBase", "GramosUnidad", "Calorias", "Proteina", "Grasas", "Carbohidratos", "Sinonimos"]);
+      } else if (name === "Combos") {
+        sheet.appendRow(["ID", "Nombre", "Items", "Calorias", "Proteina", "Grasas", "Carbohidratos"]);
       } else if (name === "Pesos") {
         sheet.appendRow(["Fecha", "Peso"]);
       } else if (name === "Configuracion") {
@@ -127,10 +148,14 @@ function readSheetObjects(sheet) {
     let displayRow = displayData[i];
     let obj = {};
     headers.forEach((h, idx) => {
+      let key = h;
+      if (key === "sinonimos" || key === "sinónimos" || key === "palabrasclave" || key === "palabras clave" || key === "palabras_clave") {
+        key = "aliases";
+      }
       if (row[idx] instanceof Date) {
-        obj[h] = displayRow[idx] || row[idx].toISOString();
+        obj[key] = displayRow[idx] || row[idx].toISOString();
       } else {
-        obj[h] = row[idx];
+        obj[key] = row[idx];
       }
     });
     rows.push(obj);
@@ -148,7 +173,10 @@ function writeSheetObjects(sheet, headers, objects) {
   const rows = objects.map(obj => {
     return headers.map(key => {
       let val = obj[key];
-      return val !== undefined ? val : "";
+      if (Array.isArray(val)) {
+        return val.join(", ");
+      }
+      return val !== undefined && val !== null ? val : "";
     });
   });
 

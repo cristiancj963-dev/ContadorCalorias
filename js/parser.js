@@ -40,6 +40,22 @@ class NaturalFoodParser {
       .trim();
   }
 
+  // Lematizador simple en español para singularizar plurales comunes
+  singularize(word) {
+    if (!word || word.length <= 3) return word;
+    if (word.endsWith("ces")) return word.slice(0, -3) + "z";
+    if (word.endsWith("es") && !word.endsWith("les") && !word.endsWith("nes") && !word.endsWith("res")) {
+      return word.slice(0, -1);
+    }
+    if (word.endsWith("es")) {
+      return word.slice(0, -2);
+    }
+    if (word.endsWith("s")) {
+      return word.slice(0, -1);
+    }
+    return word;
+  }
+
   /**
    * Divide un texto en fragmentos de alimentos individuales
    */
@@ -135,12 +151,14 @@ class NaturalFoodParser {
 
     // Limpiar restos de conectores
     let cleanTerm = chunk.replace(/\s+/g, ' ').replace(/^(de|del|con)\s+/i, '').trim();
+    // Si cleanTerm quedó vacío pero se detectó una unidad que es un alimento (ej: "2 huevos", "3 tostadas"), usarla como término
+    let termToSearch = cleanTerm || detectedUnit || rawChunk;
 
     return {
       raw: rawChunk,
       quantity,
       unit: detectedUnit,
-      searchTerm: cleanTerm || rawChunk,
+      searchTerm: termToSearch,
       parenContent
     };
   }
@@ -154,28 +172,41 @@ class NaturalFoodParser {
 
     // Priorizar contenido entre paréntesis si existe (ej: "espaguetis chinos finos")
     if (parenContent) {
-      candidateTerms.push(this.normalize(parenContent));
+      let normParen = this.normalize(parenContent);
+      candidateTerms.push(normParen);
+      let singParen = this.singularize(normParen);
+      if (singParen !== normParen) candidateTerms.push(singParen);
     }
 
     if (searchTerm) {
       let normTerm = this.normalize(searchTerm);
-      candidateTerms.push(normTerm);
-      if (unit) {
+      let singTerm = this.singularize(normTerm);
+
+      if (unit && unit !== normTerm) {
         let normUnit = this.normalize(unit);
-        candidateTerms.unshift(this.normalize(`${normUnit} ${normTerm}`));
-        candidateTerms.unshift(this.normalize(`${normUnit} de ${normTerm}`));
+        candidateTerms.push(this.normalize(`${normUnit} ${normTerm}`));
+        candidateTerms.push(this.normalize(`${normUnit} de ${normTerm}`));
+      }
+
+      candidateTerms.push(normTerm);
+      if (singTerm !== normTerm) {
+        candidateTerms.push(singTerm);
       }
     }
 
-    // 1. Coincidencia exacta de alias o nombre (probando con y sin unidad)
+    // 1. Coincidencia exacta de alias, nombre o nombre sin aclaraciones entre paréntesis
     for (let term of candidateTerms) {
       for (let food of this.foods) {
         let normName = this.normalize(food.name);
-        if (normName === term) return { food, score: 1.0, matchType: "exact" };
+        let cleanName = this.normalize(food.name.replace(/\(.*?\)/g, "").trim());
+        if (normName === term || cleanName === term) {
+          return { food, score: 1.0, matchType: "exact" };
+        }
 
         if (food.aliases) {
           for (let alias of food.aliases) {
-            if (this.normalize(alias) === term) {
+            let normAlias = this.normalize(alias);
+            if (normAlias === term || this.singularize(normAlias) === term) {
               return { food, score: 1.0, matchType: "exact_alias" };
             }
           }
@@ -183,7 +214,24 @@ class NaturalFoodParser {
       }
     }
 
-    // 2. Coincidencia por contención / subcadenas (preferir alias más largos y específicos)
+    // 2. Coincidencia por palabra completa (prioridad sobre subcadenas arbitrarias)
+    for (let term of candidateTerms) {
+      for (let food of this.foods) {
+        let cleanName = this.normalize(food.name.replace(/\(.*?\)/g, "").trim());
+        let aliases = [cleanName, ...(food.aliases || []).map(a => this.normalize(a))];
+        for (let alias of aliases) {
+          let termWordRegex = new RegExp(`\\b${term}\\b`, 'i');
+          if (termWordRegex.test(alias)) {
+            let score = term.length / alias.length;
+            if (score >= 0.4) {
+              return { food, score: Math.min(0.95, score + 0.3), matchType: "whole_word" };
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Coincidencia por contención / subcadenas (preferir alias más largos y específicos)
     let bestCandidate = null;
     let highestScore = 0;
     let longestMatchLen = 0;
@@ -191,7 +239,8 @@ class NaturalFoodParser {
     for (let term of candidateTerms) {
       for (let food of this.foods) {
         let normName = this.normalize(food.name);
-        let aliases = [normName, ...(food.aliases || []).map(a => this.normalize(a))];
+        let cleanName = this.normalize(food.name.replace(/\(.*?\)/g, "").trim());
+        let aliases = [cleanName, normName, ...(food.aliases || []).map(a => this.normalize(a))];
 
         for (let alias of aliases) {
           if (term.includes(alias)) {
@@ -213,7 +262,7 @@ class NaturalFoodParser {
       }
     }
 
-    // 3. Coincidencia por palabras clave compartidas
+    // 4. Coincidencia por palabras clave compartidas
     if (!bestCandidate) {
       for (let term of candidateTerms) {
         let termWords = term.split(/\s+/).filter(w => w.length > 2 && w !== "con" && w !== "del" && w !== "para");

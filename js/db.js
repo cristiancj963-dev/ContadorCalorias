@@ -160,8 +160,44 @@ class CalorieDB {
       let saved = JSON.parse(localStorage.getItem(this.STORAGE_KEYS.FOODS)) || [];
       let defaultList = window.DEFAULT_FOODS || [];
       let map = new Map();
-      defaultList.forEach(f => map.set(f.id, f));
-      saved.forEach(f => map.set(f.id, { ...(map.get(f.id) || {}), ...f }));
+      defaultList.forEach(f => map.set(f.id, { ...f, aliases: [...(f.aliases || [])] }));
+
+      saved.forEach(f => {
+        let existing = map.get(f.id);
+        if (existing) {
+          let savedAliases = [];
+          if (Array.isArray(f.aliases)) {
+            savedAliases = f.aliases.map(a => String(a || "").trim().toLowerCase()).filter(Boolean);
+          } else if (typeof f.aliases === "string") {
+            savedAliases = f.aliases.split(/[,;\n]+/).map(a => a.trim().toLowerCase()).filter(Boolean);
+          }
+
+          let isBuggedSingleName = savedAliases.length === 1 && savedAliases[0] === (f.name || existing.name || "").toLowerCase();
+          let mergedAliases;
+          if (isBuggedSingleName || savedAliases.length === 0) {
+            mergedAliases = [...(existing.aliases || [])];
+          } else {
+            mergedAliases = Array.from(new Set([...(existing.aliases || []), ...savedAliases]));
+          }
+
+          map.set(f.id, {
+            ...existing,
+            ...f,
+            aliases: mergedAliases
+          });
+        } else {
+          let cleanAliases = [];
+          if (Array.isArray(f.aliases)) {
+            cleanAliases = f.aliases.map(a => String(a || "").trim().toLowerCase()).filter(Boolean);
+          } else if (typeof f.aliases === "string") {
+            cleanAliases = f.aliases.split(/[,;\n]+/).map(a => a.trim().toLowerCase()).filter(Boolean);
+          }
+          map.set(f.id, {
+            ...f,
+            aliases: cleanAliases.length > 0 ? cleanAliases : [String(f.name || "").toLowerCase()]
+          });
+        }
+      });
       return Array.from(map.values());
     } catch (e) {
       return window.DEFAULT_FOODS || [];
@@ -306,12 +342,17 @@ class CalorieDB {
 
     try {
       let pending = this.getPendingSync();
+      let foodsToSync = this.getFoods().map(f => ({
+        ...f,
+        aliases: Array.isArray(f.aliases) ? f.aliases.join(", ") : (f.aliases || "")
+      }));
+
       let payload = {
         action: "SYNC_BATCH",
         pendingActions: pending,
         fullState: {
           logs: this.getAllLogs(),
-          foods: this.getFoods(),
+          foods: foodsToSync,
           combos: this.getCombos(),
           settings: this.getSettings(),
           weights: this.getWeights()
@@ -401,18 +442,41 @@ class CalorieDB {
         }
 
         if (result.data.foods && Array.isArray(result.data.foods)) {
-          let normalizedFoods = result.data.foods.map(f => ({
-            id: f.id || "food_" + Date.now(),
-            name: String(f.name || f.nombre || "").trim(),
-            category: String(f.category || f.categoria || "General").trim(),
-            defaultUnit: String(f.defaultUnit || f.defaultunit || f.unidadbase || "ración").trim(),
-            unitGrams: parseFloat(f.unitGrams || f.unitgrams || f.gramosunidad || 0),
-            calories: parseFloat(f.calories || f.calorias || 0),
-            protein: parseFloat(f.protein || f.proteina || 0),
-            fats: parseFloat(f.fats || f.grasas || 0),
-            carbs: parseFloat(f.carbs || f.carbohidratos || 0),
-            aliases: [String(f.name || "").toLowerCase()]
-          })).filter(f => f.name);
+          let defaultList = window.DEFAULT_FOODS || [];
+          let defaultMap = new Map();
+          defaultList.forEach(df => defaultMap.set(df.id, df));
+
+          let normalizedFoods = result.data.foods.map(f => {
+            let defaultFood = defaultMap.get(f.id);
+            let rawAliases = f.aliases !== undefined ? f.aliases : (f.sinonimos || f["sinónimos"] || f.palabrasclave || "");
+            let aliasList = [];
+            if (Array.isArray(rawAliases)) {
+              aliasList = rawAliases.map(s => String(s || "").trim().toLowerCase()).filter(Boolean);
+            } else if (typeof rawAliases === "string" && rawAliases.trim()) {
+              aliasList = rawAliases.split(/[,;\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+            }
+
+            // Si la columna en Sheets viene vacía o es solo el nombre completo del alimento (antiguo bug),
+            // recuperar y preservar los sinónimos del catálogo predeterminado
+            if (aliasList.length === 0 || (aliasList.length === 1 && aliasList[0] === String(f.name || "").toLowerCase())) {
+              if (defaultFood && defaultFood.aliases) {
+                aliasList = Array.from(new Set([...defaultFood.aliases, ...aliasList]));
+              }
+            }
+
+            return {
+              id: f.id || "food_" + Date.now(),
+              name: String(f.name || f.nombre || "").trim(),
+              category: String(f.category || f.categoria || "General").trim(),
+              defaultUnit: String(f.defaultUnit || f.defaultunit || f.unidadbase || "ración").trim(),
+              unitGrams: parseFloat(f.unitGrams || f.unitgrams || f.gramosunidad || 0),
+              calories: parseFloat(f.calories || f.calorias || 0),
+              protein: parseFloat(f.protein || f.proteina || 0),
+              fats: parseFloat(f.fats || f.grasas || 0),
+              carbs: parseFloat(f.carbs || f.carbohidratos || 0),
+              aliases: aliasList.length > 0 ? aliasList : [String(f.name || "").toLowerCase()]
+            };
+          }).filter(f => f.name);
           if (normalizedFoods.length > 0) {
             localStorage.setItem(this.STORAGE_KEYS.FOODS, JSON.stringify(normalizedFoods));
           }
