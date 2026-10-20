@@ -1407,10 +1407,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function extractNutrimentsPer100g(product) {
     let n = product.nutriments || {};
+    let kj = parseFloat(n["energy-kj_100g"]) || parseFloat(n["energy_100g"]) || 0;
     let kcal =
       parseFloat(n["energy-kcal_100g"]) ||
       parseFloat(n["energy-kcal"]) ||
-      (parseFloat(n["energy_100g"]) ? Math.round(parseFloat(n["energy_100g"]) / 4.184) : 0) ||
+      (kj > 0 ? Math.round(kj / 4.184) : 0) ||
       0;
     let protein = parseFloat(n.proteins_100g ?? n.proteins ?? 0) || 0;
     let carbs = parseFloat(n.carbohydrates_100g ?? n.carbohydrates ?? 0) || 0;
@@ -1445,7 +1446,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let isBarcode = /^\d{6,14}$/.test(query.replace(/\s+/g, ""));
     try {
-      const fetchWithTimeout = async (url, timeoutMs = 5000) => {
+      const fetchWithTimeout = async (url, timeoutMs = 6000) => {
         let controller = new AbortController();
         let timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
@@ -1483,10 +1484,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (foundProduct) {
           let macros100 = extractNutrimentsPer100g(foundProduct);
+          let brandStr = Array.isArray(foundProduct.brands)
+            ? foundProduct.brands.join(", ")
+            : String(foundProduct.brands || "Sin marca");
           let item = {
             code: code,
-            name: foundProduct.product_name_es || foundProduct.product_name || `Producto ${code}`,
-            brand: foundProduct.brands || "Sin marca",
+            name: String(foundProduct.product_name_es || foundProduct.product_name || `Producto ${code}`).replace(/\s+/g, " ").trim(),
+            brand: brandStr.trim() || "Sin marca",
             servingGrams: parseFloat(foundProduct.serving_quantity) || 100,
             ...macros100
           };
@@ -1500,22 +1504,25 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
       } else {
+        // Motor de búsqueda real por texto (Search-a-licious q=... + fallback cgi/search.pl en .net)
         let searchUrls = [
-          `https://world.openfoodfacts.net/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity`,
-          `https://es.openfoodfacts.net/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity`,
-          `https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity`,
-          `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`
+          `https://search.openfoodfacts.org/search?q=${encodeURIComponent(query)}&page_size=24&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity,countries_tags`,
+          `https://world.openfoodfacts.net/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=16&fields=code,product_name,product_name_es,brands,nutriments,serving_quantity,countries_tags`,
+          `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=12`
         ];
-        let products = [];
+        let rawProducts = [];
         let anyMirrorResponded = false;
         for (let sUrl of searchUrls) {
           try {
-            let res = await fetchWithTimeout(sUrl, 5000);
+            let res = await fetchWithTimeout(sUrl, 6000);
             if (!res.ok) continue;
             let data = await res.json();
             anyMirrorResponded = true;
-            if (data && Array.isArray(data.products) && data.products.length > 0) {
-              products = data.products;
+            let list = (data && Array.isArray(data.hits))
+              ? data.hits
+              : ((data && Array.isArray(data.products)) ? data.products : []);
+            if (list.length > 0) {
+              rawProducts = list;
               break;
             }
           } catch (e) {
@@ -1523,22 +1530,29 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        if (!anyMirrorResponded && products.length === 0) {
+        if (!anyMirrorResponded && rawProducts.length === 0) {
           throw new Error("Servidores de OpenFoodFacts no disponibles en este momento. Reintenta en unos instantes.");
         }
 
-        let valid = products
+        let valid = rawProducts
           .map(p => {
             let m = extractNutrimentsPer100g(p);
+            let brandStr = Array.isArray(p.brands) ? p.brands.join(", ") : String(p.brands || "");
+            let isSpain = Array.isArray(p.countries_tags) && p.countries_tags.includes("en:spain");
             return {
-              code: p.code || "",
-              name: (p.product_name_es || p.product_name || "").trim(),
-              brand: (p.brands || "").trim(),
+              code: String(p.code || ""),
+              name: String(p.product_name_es || p.product_name || "").replace(/\s+/g, " ").trim(),
+              brand: brandStr.trim(),
               servingGrams: parseFloat(p.serving_quantity) || 100,
+              isSpain,
               ...m
             };
           })
           .filter(p => p.name && (p.calories > 0 || p.protein > 0 || p.carbs > 0 || p.fats > 0));
+
+        // Priorizar productos comercializados en España manteniendo el orden de relevancia
+        valid.sort((a, b) => (b.isSpain ? 1 : 0) - (a.isSpain ? 1 : 0));
+        valid = valid.slice(0, 10);
 
         if (valid.length === 0) {
           if (elements.barcodeResultsStatus) {
