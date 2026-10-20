@@ -1991,6 +1991,20 @@ document.addEventListener("DOMContentLoaded", () => {
       updateSyncBadge();
     }
 
+    let localLogs = db.getAllLogs();
+    // Mecanismo de control y seguridad contra sobreescritura accidental:
+    if (localLogs.length === 0) {
+      let wantToPull = confirm(
+        "⚠️ ATENCIÓN: Esta sesión en tu navegador no tiene comidas registradas.\n\n" +
+        "Si subes datos vacíos a Google Sheets podrías sobrescribir tu histórico.\n\n" +
+        "¿Deseas DESCARGAR primero tus datos existentes desde Google Sheets? (Pulsa Aceptar para descargar)"
+      );
+      if (wantToPull) {
+        await handlePullNow(true);
+        return;
+      }
+    }
+
     elements.syncStatusMsg.innerHTML = `<span class="loading-spinner"></span> Sincronizando con Google Sheets...`;
     let res = await db.syncWithGoogle();
     if (res.success) {
@@ -2002,7 +2016,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function handlePullNow() {
+  async function handlePullNow(skipConfirm = false) {
     let urlVal = elements.googleScriptUrlInput ? elements.googleScriptUrlInput.value.trim() : "";
     if (urlVal) {
       let current = db.getSettings();
@@ -2011,7 +2025,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateSyncBadge();
     }
 
-    if (confirm("¿Descargar datos desde Google Sheets y sobreescribir los cambios locales?")) {
+    if (skipConfirm || confirm("¿Descargar y sincronizar datos desde Google Sheets en este dispositivo?")) {
       elements.syncStatusMsg.innerHTML = `<span class="loading-spinner"></span> Descargando desde Google Sheets...`;
       let res = await db.pullFromGoogle();
       if (res.success) {

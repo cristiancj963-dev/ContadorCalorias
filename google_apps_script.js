@@ -66,34 +66,34 @@ function doPost(e) {
     setupSheetsIfMissing(ss);
 
     if (postData.action === "SYNC_BATCH" && postData.fullState) {
-      // Guardar estado completo en las hojas
-      writeSheetObjects(ss.getSheetByName("Diario"), [
+      // Guardar con fusión inteligente (protege contra sobreescritura accidental y conserva histórico)
+      writeSheetObjectsWithMerge(ss.getSheetByName("Diario"), [
         "id", "date", "time", "mealType", "foodId", "foodName", "quantity", "unit", "calories", "protein", "fats", "carbs", "createdAt"
-      ], postData.fullState.logs || []);
+      ], postData.fullState.logs || [], "id");
 
-      writeSheetObjects(ss.getSheetByName("Alimentos"), [
+      writeSheetObjectsWithMerge(ss.getSheetByName("Alimentos"), [
         "id", "name", "category", "defaultUnit", "unitGrams", "calories", "protein", "fats", "carbs", "aliases"
       ], (postData.fullState.foods || []).map(f => ({
         ...f,
         aliases: Array.isArray(f.aliases) ? f.aliases.join(", ") : (f.aliases || f.sinonimos || "")
-      })));
+      })), "id");
 
-      writeSheetObjects(ss.getSheetByName("Combos"), [
+      writeSheetObjectsWithMerge(ss.getSheetByName("Combos"), [
         "id", "name", "items", "calories", "protein", "fats", "carbs"
       ], (postData.fullState.combos || []).map(c => ({
         ...c,
         items: typeof c.items === "string" ? c.items : JSON.stringify(c.items || [])
-      })));
+      })), "id");
 
-      writeSheetObjects(ss.getSheetByName("Pesos"), [
+      writeSheetObjectsWithMerge(ss.getSheetByName("Pesos"), [
         "date", "weight"
-      ], postData.fullState.weights || []);
+      ], postData.fullState.weights || [], "date");
 
       writeSettingsSheet(ss.getSheetByName("Configuracion"), postData.fullState.settings || {});
 
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
-        message: "Datos sincronizados correctamente en Google Sheets",
+        message: "Datos sincronizados correctamente en Google Sheets (fusión segura)",
         timestamp: new Date().toISOString()
       })).setMimeType(ContentService.MimeType.JSON);
     }
@@ -183,6 +183,42 @@ function writeSheetObjects(sheet, headers, objects) {
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
   }
+}
+
+function writeSheetObjectsWithMerge(sheet, headers, incomingObjects, keyField) {
+  if (!sheet) return;
+  keyField = keyField || "id";
+
+  let existingObjects = readSheetObjects(sheet);
+
+  // PROTECCIÓN DE SEGURIDAD ABSOLUTA:
+  // Si la petición entrante está vacía pero la hoja ya contiene datos, NO borrar la hoja
+  if ((!incomingObjects || incomingObjects.length === 0) && existingObjects.length > 0) {
+    Logger.log("Protección activada: intento de sobreescritura con lista vacía en " + sheet.getName());
+    return;
+  }
+
+  // Fusión por clave identificadora (id o fecha):
+  // Conserva todo el histórico existente en la hoja y actualiza o añade los registros entrantes
+  let map = {};
+  existingObjects.forEach(obj => {
+    let k = String(obj[keyField] || obj.id || obj.date || "");
+    if (k) map[k] = obj;
+  });
+
+  (incomingObjects || []).forEach(obj => {
+    let k = String(obj[keyField] || obj.id || obj.date || "");
+    if (k) {
+      map[k] = Object.assign({}, map[k] || {}, obj);
+    }
+  });
+
+  let mergedList = Object.keys(map).map(k => map[k]);
+  if (mergedList.length === 0 && incomingObjects && incomingObjects.length > 0) {
+    mergedList = incomingObjects;
+  }
+
+  writeSheetObjects(sheet, headers, mergedList);
 }
 
 function readSettingsSheet(sheet) {
